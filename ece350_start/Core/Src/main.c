@@ -39,6 +39,16 @@ int main(void)
   MX_USART2_UART_Init();
   /* MCU Configuration is now complete. Start writing your code below this line */
 
+  unit32_t* MSP_INIT_VAL = *(uint32_t**)0x0;
+  printf("MSP Init is : %p\r\n", MSP_INIT_VAL);
+
+  uint32_t* sp = MSP_INIT_VAL - THREAD_STACK_SIZE;
+
+  *(--sp) = 1 << 24;                             // xPSR (Thumb bit = 1)
+  *(--sp) = (uint32_t)print_continuously;       // PC
+  for (int i = 0 ; i < 14; i++)  *(--sp) = 0xA;
+
+  switch_to_thread(sp);
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
