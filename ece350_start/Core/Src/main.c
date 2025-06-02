@@ -52,6 +52,47 @@ int main(void)
   MX_USART2_UART_Init();
   /* MCU Configuration is now complete. Start writing your code below this line */
 
+  // >>>> EX1 & 3 start =================================================
+  uint32_t* MSP_INIT_VAL = *(uint32_t**)0x0;
+  printf("MSP Init is: %p\r\n", MSP_INIT_VAL);
+
+  // assume stack size & thread#
+	#define MAIN_STACK_SIZE     0x400
+	#define THREAD_STACK_SIZE   0x400
+	#define NUM_THREADS         3
+
+  uint32_t* stack_addrs[NUM_THREADS];
+  stack_addrs[0] = (uint32_t*)((uint8_t*)MSP_INIT_VAL - MAIN_STACK_SIZE); // (uint8_t*) to changed in Byte, since stack size is in Byte
+  printf("Thread 1 stack start: %p\r\n", stack_addrs[0]);
+
+  for (int i = 1; i < NUM_THREADS; ++i) {
+      stack_addrs[i] = (uint32_t*)((uint8_t*)stack_addrs[i - 1] - THREAD_STACK_SIZE);
+      printf("Thread %d stack start: %p\r\n", i + 1, stack_addrs[i]);
+  }
+  // <<<< EX1 & 3 end ===================================================
+
+
+  // >>>> EX2 start =================================================
+//	  __asm("SVC #0");
+  // <<<< EX2 end ===================================================
+
+
+  // >>>> EX3 start =================================================
+  uint32_t* stackptr = stack_addrs[0]; // stack pointer that pointed to the stack base of thread 1
+  *(--stackptr) = 1 << 24;                       // xPSR: Thumb bit
+  *(--stackptr) = (uint32_t)print_continuously;  // PC: when SVC is exited, run print_continuously
+  *(--stackptr) = 0xA;                    // LR
+  *(--stackptr) = 0xA;                    // R12
+  *(--stackptr) = 0xA;                    // R3
+  *(--stackptr) = 0xA;                    // R2
+  *(--stackptr) = 0xA;                    // R1
+  *(--stackptr) = 0xA;                    // R0
+  for (int i = 0; i < 8; i++) {
+      *(--stackptr) = 0xA;               // R4–R11 (R11 first, then R10, ..., R4)
+  }
+  uint32_t* stack_top = stackptr; // stack pointer now pointed to the stack top of thread 1
+  osThreadStart(stack_top);	// called the system to start thread with SVC #1
+  // <<<< EX3 end ===================================================
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -60,47 +101,6 @@ int main(void)
     /* USER CODE END WHILE */
 //	  printf("Hello, world!\r\n");
     /* USER CODE BEGIN 3 */
-	  // >>>> EX1 & 3 start
-	  uint32_t* MSP_INIT_VAL = *(uint32_t**)0x0;
-	  printf("MSP Init is: %p\r\n", MSP_INIT_VAL);
-
-	  // assume stack size & thread#
-		#define MAIN_STACK_SIZE     0x400
-		#define THREAD_STACK_SIZE   0x400
-		#define NUM_THREADS         3
-
-	  uint32_t* stack_addrs[NUM_THREADS];
-	  stack_addrs[0] = (uint32_t*)((uint8_t*)MSP_INIT_VAL - MAIN_STACK_SIZE); // (uint8_t*) to changed in Byte, since stack size is in Byte
-	  printf("Thread 1 stack start: %p\r\n", stack_addrs[0]);
-
-	  for (int i = 1; i < NUM_THREADS; ++i) {
-	      stack_addrs[i] = (uint32_t*)((uint8_t*)stack_addrs[i - 1] - THREAD_STACK_SIZE);
-	      printf("Thread %d stack start: %p\r\n", i + 1, stack_addrs[i]);
-	  }
-	  // <<<< EX1 & 3 end
-
-
-	  // >>>> EX2 start
-//	  __asm("SVC #0");
-	  // <<<< EX2 end
-
-
-	  // >>>> EX3 start
-	  uint32_t* stackptr = stack_addrs[0]; // stack pointer that pointed to the stack base of thread 1
-	  *(--stackptr) = 1 << 24;                       // xPSR: Thumb bit
-	  *(--stackptr) = (uint32_t)print_continuously;  // PC: when SVC is exited, run print_continuously
-	  *(--stackptr) = 0xA;                    // LR
-	  *(--stackptr) = 0xA;                    // R12
-	  *(--stackptr) = 0xA;                    // R3
-	  *(--stackptr) = 0xA;                    // R2
-	  *(--stackptr) = 0xA;                    // R1
-	  *(--stackptr) = 0xA;                    // R0
-	  for (int i = 0; i < 8; i++) {
-	      *(--stackptr) = 0xA;               // R4–R11 (R11 first, then R10, ..., R4)
-	  }
-	  uint32_t* stack_top = stackptr; // stack pointer now pointed to the stack top of thread 1
-	  osThreadStart(stack_top);	// called the system to start thread with SVC #1
-	  // <<<< EX3 end
   }
   /* USER CODE END 3 */
 }

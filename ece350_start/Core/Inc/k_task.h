@@ -10,6 +10,19 @@
 #ifndef INC_K_TASK_H_
 #define INC_K_TASK_H_
 
+typedef unsigned int U32;
+typedef unsigned short U16;
+typedef char U8;
+typedef unsigned int task_t;
+
+typedef struct task_control_block {
+	void (*ptask)(void* args); //entry address
+	U32 stack_high; //starting address of stack (high address)
+	task_t tid; //task ID
+	U8 state; //task's state
+	U16 stack_size; //stack size. Must be a multiple of 8
+	//your own fields at the end
+} TCB;
 
 
 #endif /* INC_K_TASK_H_ */
