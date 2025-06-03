@@ -53,7 +53,7 @@ int main(void)
   /* MCU Configuration is now complete. Start writing your code below this line */
 
   // >>>> EX1 & 3 start =================================================
-  uint32_t* MSP_INIT_VAL = *(uint32_t**)0x0;
+  uint32_t* MSP_INIT_VAL = *(uint32_t**)0x0;	// dereference once to get the address in 0x0, which is the MSP_INIT_VAL
   printf("MSP Init is: %p\r\n", MSP_INIT_VAL);
 
   // assume stack size & thread#
