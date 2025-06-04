@@ -103,7 +103,7 @@ int osCreateTask(TCB* task)
 {
     if (task_count >= MAX_TASKS || 
         task->stack_size %8 != 0 || 
-        task->stack_size == THREAD_STACK_SIZE || 
+        task->stack_size < THREAD_STACK_SIZE || 
         task == NULL || 
         task->ptask == NULL)
 		// TODO: stack size can be 0 then we can use the default size
@@ -112,15 +112,9 @@ int osCreateTask(TCB* task)
         return RTX_ERR; // 0
     }
 
-    // If stack_size is 0, use default
-    if (task->stack_size == 0) {
-        task->stack_size = THREAD_STACK_SIZE;
-    }
-
     // TODO: why comes memory floor? I didnt see perhaps missed
     	// should comes from (U32*)((U8*)MSP_INIT_VAL - _Min_Stack_Size)
 	U32* MSP_INIT_VAL = *(U32**)0x0;
-	U32 MAX_STACK_SIZE = 0x4000; // minimum stack size
     if ((U32*)((U8*)task_ptr - task->stack_size) < (U32*)((U8*)MSP_INIT_VAL - MAX_STACK_SIZE)) {
         return RTX_ERR;  // 0
     }
@@ -245,5 +239,5 @@ void SVC_Handler_Main(task_t* svc_args)
 
 void osSwitchTask(void)
 {
-
+	// TODO: Implement task switching logic
 }

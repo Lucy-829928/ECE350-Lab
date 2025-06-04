@@ -24,6 +24,7 @@
 #define RTX_ERR   0
 
 #define MAIN_STACK_SIZE  0x400	  // from pre-lab
+#define MAX_STACK_SIZE 0x4000 // max allowed stack size for main stack + task stacks
 #define MEMORY_FLOOR 0x20000000   // set a size for the minimal address of memory
 
 #endif /* INC_COMMON_H_ */
