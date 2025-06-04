@@ -1,243 +1,258 @@
+
 #include "k_task.h"
 #include "common.h"
-#include <stdio.h>
+#include "stm32f4xx_it.h"
+#include <stdio.h> //You are permitted to use this library, but currently only printf is implemented. Anything else is up to you!
 
-TCB tcb_arr[MAX_TASKS];	  // create an array to store TCB
-int current_tid = -1;     // set initial current_tid as -1, invalid
-int task_count = 0;       // set initial task_count = 0;
-U32* task_ptr = 0;		  // point to the different stack address when we set stack
 
-// for osKernelStart
-int kernel_init = 0;
-int kernel_running = 0;
+// TCB list global
+TCB tcb_list[MAX_TASKS];
 
-// TODO: stack_high, low, ptr, ptask, some are U32, some are U32*,
-// but when casting, we seems confuse them, will cause error? 
-// After assuming current task is valid, insert the task into the TCB array
-void OsInsertTask(TCB* task, U32* stack_base, int is_null_task) {
-	int id;
-	if (is_null_task) id = TID_NULL; // if inserting null task, set id to TID_NULL
-	else id = task_count;
+// stack addresses global
+U32* stack_addrs[MAX_TASKS];
+U32 os_running = 0;
+int g_current_task_idx; // <<< DEFINITION HERE
 
-    task->tid = id;
-    task->state = READY;
+U32 tcb_size = 20;
 
-    task->stack_high = (U32)stack_base;
-    task->stack_low = (U32)((U8*)stack_base - task->stack_size);
 
-    U32* sp = stack_base;
-    *(--sp) = 1 << 24;                // xPSR: Thumb bit
-    *(--sp) = (U32)(task->ptask);     // PC
-    *(--sp) = 0xA;                    // LR
-    *(--sp) = 0xA;                    // R12
-    *(--sp) = 0xA;                    // R3
-    *(--sp) = 0xA;                    // R2
-    *(--sp) = 0xA;                    // R1
-    *(--sp) = 0xA;                    // R0
-    for (int i = 0; i < 8; i++) {
-        *(--sp) = 0xA;                // R4–R11
+void init_tcb(TCB* tcb, task_t tid, void (*task_func)(void*), U16 stack_size_bytes, U8 initial_state, void* task_args) {
+
+
+    if (!tcb || !task_func || stack_size_bytes == 0 || (stack_size_bytes % 8 != 0)) {
+        // Handle error: Invalid parameters
+        return;
     }
 
-    task->stack_ptr = sp;
 
-    TCB* t = &tcb_arr[id];
-    t->tid = task->tid;
-    t->state = task->state;
-    t->stack_size = task->stack_size;
-    t->ptask = task->ptask;
-    t->stack_high = task->stack_high;
-    t->stack_low  = task->stack_low;
-    t->stack_ptr  = task->stack_ptr;
 
-    task_count++;
-
-    stack_base = (U32*)task->stack_low;
 }
 
-void OsInsertNullTask(U32* stack_base)
-{
-	TCB null_task = (TCB){ 
-		.ptask = (U32)idle,
-		.stack_size = THREAD_STACK_SIZE,
-		.tid = 0xff,
-		.stack_high = 0
-	};
 
-	OsInsertTask(&null_task, stack_base, 1); // insert null task with is_null_task = 1
+
+
+// assume both uses 400
+
+int osKernelInit(){
+	  g_current_task_idx = -1;
+
+
+
+	  U32* MSP_INIT_VAL = *(U32**)0x0;
+
+
+	  stack_addrs[0] = (U32*)((U32*)MSP_INIT_VAL - STACK_SIZE); // (uint8_t*) to changed in Byte, since stack size is in Byte
+	  printf("Thread 1 stack start: %p\r\n", stack_addrs[0]);
+
+	  for (int i = 1; i < MAX_TASKS; ++i) {
+	      stack_addrs[i] = (U32*)((U8*)stack_addrs[i - 1] - STACK_SIZE);
+	      printf("Thread %d stack start: %p\r\n", i + 1, stack_addrs[i]);
+	  }
+
+	  // init all TCB blocks from TID = 0 to TID = max tasks -1 (all TCB blocks)
+	  for (int tcb_id = 0; tcb_id < MAX_TASKS; ++tcb_id){
+
+		  tcb_list[tcb_id].tid = tcb_id;
+		  tcb_list[tcb_id].state = DORMANT;
+		  tcb_list[tcb_id].stack_high = (U32)(stack_addrs[tcb_id] + STACK_SIZE);
+		  tcb_list[tcb_id].stack_size = STACK_SIZE;
+		  tcb_list[tcb_id].ptask = NULL;
+
+	  }
+
 }
 
-void osKernelInit(void)
-{
-	// initialize entries of TCB array
-	for (int i = 0; i < MAX_TASKS; i++)
-    {
-        tcb_arr[i].tid = i;
-        tcb_arr[i].state = UNDEFINED;
-        tcb_arr[i].stack_size = THREAD_STACK_SIZE;
-        tcb_arr[i].ptask = NULL;
-        tcb_arr[i].stack_high = 0;
-        tcb_arr[i].stack_low = 0;
-        tcb_arr[i].stack_ptr = NULL;
-    }
-    current_tid = -1; // initialize current_tid as -1, invalid
-    task_count = 0;   // initialize task_count = 0;
-    kernel_init = 1;
+int osCreateTask(TCB* task){
 
-	// initialize stack address that is available for thread stack
-	U32* MSP_INIT_VAL = *(U32**)0x0;
-	task_ptr = MSP_INIT_VAL - (MAIN_STACK_SIZE / sizeof(U32));
+	// first find the next available spot
+	int next_available_space = -1;
 
-	// insert the NULL task
-	OsInsertNullTask(task_ptr);
-}
+	for (int i = 1; i < MAX_TASKS; i++){
+		if (tcb_list[i].state == DORMANT) {
 
-static void idle(void *arg)
-{
-    for (;;)
-    {
-        __asm volatile ("WFI");
-    }
-}
+			next_available_space = i;
+			break;
 
-int osCreateTask(TCB* task)
-{
-    if (task_count >= MAX_TASKS || 
-        task->stack_size %8 != 0 || 
-        task->stack_size < THREAD_STACK_SIZE || 
-        task == NULL || 
-        task->ptask == NULL)
-		// TODO: stack size can be 0 then we can use the default size
-		// TODO: how about other attributes? pid?
-    {
-        return RTX_ERR; // 0
-    }
-
-    // TODO: why comes memory floor? I didnt see perhaps missed
-    	// should comes from (U32*)((U8*)MSP_INIT_VAL - _Min_Stack_Size)
-	U32* MSP_INIT_VAL = *(U32**)0x0;
-    if ((U32*)((U8*)task_ptr - task->stack_size) < (U32*)((U8*)MSP_INIT_VAL - MAX_STACK_SIZE)) {
-        return RTX_ERR;  // 0
-    }
-
-    OsInsertTask(task, task_ptr, 0);
-    return RTX_OK; // 1
-}
-
-int osKernelStart(void)
-{
-	if (kernel_init == 0 || task_count == 0 || kernel_running == 1)
-	{
-		return RTX_ERR; // 0
-	}
-
-	for (int i = TID_NULL + 1; i < MAX_TASKS; i++)
-	{
-		if (tcb_arr[i].state == READY)  // finding the first ready state
-		{
-			current_tid = i;
-			tcb_arr[i].state = RUNNING;
-
-			// running the kernel
-			kernel_running = 1;
-			// TODO: which one should we pass, stack_low or stack_ptr?
-			start_thread(tcb_arr[i].stack_low);
-			// never returned if found
 		}
 	}
-	// If no task found, run the idle task
-	current_tid = TID_NULL; // set current_tid to NULL task
-	tcb_arr[TID_NULL].state = RUNNING;
-	start_thread(tcb_arr[TID_NULL].stack_low);
 
-	// We should never reach here, but if we do, return error
-	return RTX_ERR; // 0
-}
+	if (next_available_space == -1){return RTX_ERR;}
 
-void osYield(void)
-{
-	__asm volatile(
-		"svc #1 \n"
-	);
-}
+	// now we have the index ready.
 
-int osTaskInfo(task_t TID, TCB* task_copy)
-{
-	if (TID < TID_NULL || TID >= MAX_TASKS || task_copy == NULL) {
-		return RTX_ERR; // 0
+	tcb_list[next_available_space].ptask = task->ptask;
+	tcb_list[next_available_space].state = READY;
+
+	U32* stackptr = tcb_list[next_available_space].stack_high;
+
+	*(--stackptr) = 0x01000000;
+	*(--stackptr) = (U32)(tcb_list[next_available_space].ptask);  // PC: when SVC is exited, run print_continuously
+	*(--stackptr) = (U32)osTaskExitHandler;                    // LR
+	*(--stackptr) = next_available_space;                    // R12
+	*(--stackptr) = next_available_space;                    // R3
+	*(--stackptr) = next_available_space;                    // R2
+	*(--stackptr) = next_available_space;                    // R1
+	*(--stackptr) = next_available_space;                    // R0
+	for (int i = 0; i < 8; i++) {
+		*(--stackptr) = next_available_space;               // R4–R11 (R11 first, then R10, ..., R4)
 	}
 
-	if (tcb_arr[TID].state == UNDEFINED) {
-		return RTX_ERR; // 0
+	tcb_list[next_available_space].sp = stackptr; // Correct: sp now points to the prepared stack frame
+
+	printf("CREATED task, id = %d \r\n", next_available_space);
+	return RTX_OK;
+}
+
+int osKernelStart() {
+
+
+	printTCB(1);
+	printTCB(2);
+
+	if (!os_running){
+		os_running = 1;
+	}else{
+
+		return RTX_ERR;
 	}
 
-	// Copy the task information from the TCB array to the provided task_copy
-	TCB* task = &tcb_arr[TID];
-	task_copy->tid = task->tid;
-	task_copy->state = task->state;
-	task_copy->stack_size = task->stack_size;
-	task_copy->ptask = task->ptask;
-	task_copy->stack_high = task->stack_high;
-	task_copy->stack_low = task->stack_low;
-	task_copy->stack_ptr = task->stack_ptr;
+     int first_task_idx = -1;
 
-	return RTX_OK; // 1
+    // Find the first task in READY state
+    // A more sophisticated scheduler might pick based on priority
+    for (int i = 1; i < MAX_TASKS; ++i) {
+        if (tcb_list[i].state == READY) {
+            first_task_idx = i;
+            break;
+        }
+    }
+
+    printf("\n starting kernel 0, got task idx %d \r\n", first_task_idx);
+
+
+    if (first_task_idx == -1) {
+        // No task to run, kernel cannot start.
+        // This is an error, or could enter an idle loop.
+        return RTX_ERR; // Or handle error appropriately
+    }
+
+    g_current_task_idx = first_task_idx;
+    tcb_list[first_task_idx].state = RUNNING;
+
+
+    // Trigger SVC to call launch_scheduler
+    // The SVC_Handler (not implemented here) must be configured
+    // to call launch_scheduler() when SVC number 16 is invoked.
+
+    printf("starting kernel 1 \r\n");
+
+    __asm volatile ("SVC #1");
+
+    printf("\n YOUR PROGRAM IS DEAD \r\n");
+
+    // Should not return from here if SVC is successful
+    return RTX_ERR; // Indicate failure if SVC didn't switch context
 }
 
-task_t osGetTID(void)
-{
-	if (current_tid < TID_NULL || current_tid >= MAX_TASKS) {
-		// We should never reach here, but if we do, return error
-		printf("Error: Invalid current_tid %d\r\n", current_tid);
-		return TID_NULL; // return NULL task ID if current_tid is invalid
+void scheduler(void) {
+    int prev_task_idx = g_current_task_idx;
+    int next_candidate_idx = prev_task_idx;
+
+    if (prev_task_idx != -1 && tcb_list[prev_task_idx].state == RUNNING) {
+        tcb_list[prev_task_idx].state = READY; // Mark current task as ready (if it wasn't blocked/terminated)
+    }
+
+    for (int i = 0; i < MAX_TASKS; ++i) {
+        next_candidate_idx = (prev_task_idx + 1 + i) % MAX_TASKS; // Start search from task after previous
+        if (tcb_list[next_candidate_idx].state == READY) {
+            g_current_task_idx = next_candidate_idx;
+            tcb_list[g_current_task_idx].state = RUNNING;
+            if (prev_task_idx != g_current_task_idx) { // Only print if actual switch
+                printf("SCHEDULER: Switched from Task %d to Task %d\r\n", (prev_task_idx == -1 ? -1 : prev_task_idx), g_current_task_idx);
+            } else {
+                 printf("SCHEDULER: Continuing with Task %d\r\n", g_current_task_idx);
+            }
+            return;
+        }
+    }
+
+    // If loop finishes, no other READY task was found.
+    // Check if the original task (which was set to READY) can continue.
+    if (prev_task_idx != -1 && tcb_list[prev_task_idx].state == READY) {
+        g_current_task_idx = prev_task_idx;
+        tcb_list[g_current_task_idx].state = RUNNING;
+        printf("SCHEDULER: No other READY task, continuing with Task %d\r\n", g_current_task_idx);
+        return;
+    }
+
+    // If we reach here, NO task is ready. This is a critical error unless you have an idle task.
+    // An IDLE task should always be in the READY state.
+    printf("SCHEDULER: CRITICAL ERROR - No task is READY to run!\r\n");
+    // You might want to find a specific IDLE task here or enter a safe halt.
+    // For now, g_current_task_idx might be stale, potentially causing issues.
+}
+
+void osYield(){
+	__asm volatile ("SVC #2");
+}
+
+int osTaskInfo(task_t TID, TCB* task_copy){
+
+
+	if (TID > (MAX_TASKS-1) || TID < 0){
+		return RTX_ERR;
 	}
-	return tcb_arr[current_tid].tid; // return the current task's TID
+
+	task_copy->ptask = tcb_list[TID].ptask;
+	task_copy->sp = tcb_list[TID].sp;
+	task_copy->stack_high = tcb_list[TID].stack_high;
+	task_copy->stack_size = tcb_list[TID].stack_size;
+	task_copy->state = tcb_list[TID].state;
+	task_copy->tid = tcb_list[TID].tid;
+
+	return RTX_OK;
 }
 
-int osTaskExit(void)
-{
-	// TODO: Implement task exit logic
+
+int printTCB(task_t TID){
+
+	TCB test_tcb;
+	osTaskInfo(TID, &test_tcb);
+
+	printf("--- TCB [%d] --- \r\n", TID);
+	printf("| TCB program ptr [%d] --- \r\n", test_tcb.ptask);
+	printf("| TCB stack ptr [%d] --- \r\n", test_tcb.sp);
+	printf("| TCB stack high [%d] --- \r\n", test_tcb.stack_high);
+	printf("| TCB state 0 dormant 1 ready 2 running: [%d] --- \r\n", test_tcb.state);
+	printf("--- TCB printout completed ---\r\n");
+
+	return 0;
+
 }
 
-__attribute__((naked)) void start_thread(U32* new_stack)
-{
-	__asm volatile(
-        "ldmia r0!, {r4-r11}  \n"  // "LDMIA": load multiple, increment after; restore R4~R11, R0 then pointed to next PSP
-		"msr psp, r0          \n"  // move(read) the data(incremented address) in R0(common register) to PSP(special register)
+int osTaskExit(void){
 
-        "movs r1, #2          \n"  // move(read) the data 0 to R1
-        "msr CONTROL, r1      \n"  // CONTROL = 0b10 -> thread mode, privileged, use PSP
-        "isb                  \n"  // ISB: instruction synchronization barrier, to make sure the above settings of PSP/CONTROL is active
 
-		"ldr lr, =0xFFFFFFFD  \n"  // manually set LR to EXC_RETURN, 0xFFFFFFFD = back to thread mode with PSP
-        "bx lr                \n"  // back to the next line where interrupt started(since we set PC in stack, so it will run print_continuously), special registers will be auto popped out
-    );
+
 }
 
-void SVC_Handler_Main(task_t* svc_args)
-{
-	U32 svc_num = 0;
+void osTaskExitHandler(void) {
+    printf("Task %lu exited by returning.\r\n", g_current_task_idx);
+    tcb_list[g_current_task_idx].state = DORMANT; // Mark task as dormant
 
-	U16* svc_pc = (U16*)svc_args[6];  // PC's address at [6] of current SP
-	U16 svc_instr = *(svc_pc - 1);  // 1.change to uint16_t* since data stored in the pointer(Instructions) is in 2 Bytes; 2."-1"(-1 two bytes = 1 instruction before) is where SVC instruction at
-	svc_num = svc_instr & 0xFF;  // only extract lower 8 bits (0~7) = 2 Bytes
+    // Trigger PendSV to switch to another task
+    // This is a critical part of a real scheduler
+    // For now, this will effectively halt if no proper scheduler exists
+    // Or, if we have a PendSV handler, it will pick the next task.
+    __asm volatile("SVC #2"); // SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 
-	printf(">>> SVC Number: %u\r\n", (task_t)svc_num);
-
-	switch (svc_num) {
-		case 0:
-			printf("SVC 0: Hi~\r\n");
-			break;
-		case 1:
-			printf("Syscall 1: \r\n");
-			osSwitchTask();
-			break;
-		default:
-			printf("Unknown syscall: %u\r\n", (task_t)svc_num);
-			break;
-	}
+    while(1); // Should not return from here after PendSV
 }
 
-void osSwitchTask(void)
-{
-	// TODO: Implement task switching logic
+
+int testing_fx(){
+
+
+
+	return 0;
 }
