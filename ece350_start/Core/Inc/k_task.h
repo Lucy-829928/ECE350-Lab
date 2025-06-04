@@ -36,6 +36,5 @@ int osTaskExit(void);
 
 void start_thread(U32* new_stack);
 void SVC_Handler_Main(task_t* svc_args);
-void osSwitchTask(void);
 
 #endif /* INC_K_TASK_H_ */
