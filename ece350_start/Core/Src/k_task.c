@@ -14,18 +14,16 @@ int kernel_running = 0;
 // TODO: stack_high, low, ptr, ptask, some are U32, some are U32*,
 // but when casting, we seems confuse them, will cause error? 
 // After assuming current task is valid, insert the task into the TCB array
-void OsInsertTask(TCB* task, U32* stack_base, int is_null_task) {
-	int id;
-	if (is_null_task) id = TID_NULL; // if inserting null task, set id to TID_NULL
-	else id = task_count;
+void OsInsertTask(TCB* task, int is_null_task) {
+    int id;
+    if (is_null_task) id = TID_NULL; // if inserting null task, set id to TID_NULL
+    else id = task_count;
 
     task->tid = id;
     task->state = READY;
 
-    task->stack_high = (U32)stack_base;
-    task->stack_low = (U32)((U8*)stack_base - task->stack_size);
-
-    U32* sp = stack_base;
+    task->stack_high = (U32)*task_ptr;
+    task->stack_low = (U32)((U8*)*task_ptr - task->stack_size);    U32* sp = *task_ptr;
     *(--sp) = 1 << 24;                // xPSR: Thumb bit
     *(--sp) = (U32)(task->ptask);     // PC
     *(--sp) = 0xA;                    // LR
@@ -47,23 +45,22 @@ void OsInsertTask(TCB* task, U32* stack_base, int is_null_task) {
     t->ptask = task->ptask;
     t->stack_high = task->stack_high;
     t->stack_low  = task->stack_low;
-    t->stack_ptr  = task->stack_ptr;
-
-    task_count++;
-
-    stack_base = (U32*)task->stack_low;
+    t->stack_ptr  = task->stack_ptr;    task_count++;
+    
+    // Update global task_ptr to point to the next available stack space
+    *task_ptr = (U32*)task->stack_low;
 }
 
-void OsInsertNullTask(U32* stack_base)
+void OsInsertNullTask(void)
 {
-	TCB null_task = (TCB){ 
-		.ptask = (U32)idle,
-		.stack_size = THREAD_STACK_SIZE,
-		.tid = 0xff,
-		.stack_high = 0
-	};
+    TCB null_task = (TCB){ 
+        .ptask = (U32)idle,
+        .stack_size = THREAD_STACK_SIZE,
+        .tid = 0xff,
+        .stack_high = 0
+    };
 
-	OsInsertTask(&null_task, stack_base, 1); // insert null task with is_null_task = 1
+    OsInsertTask(&null_task, 1); // insert null task with is_null_task = 1
 }
 
 void osKernelInit(void)
@@ -82,13 +79,13 @@ void osKernelInit(void)
     current_tid = -1; // initialize current_tid as -1, invalid
     task_count = 0;   // initialize task_count = 0;
     kernel_init = 1;
+    // initialize stack address that is available for thread stack
+    U32* MSP_INIT_VAL = *(U32**)0x0;
+    task_ptr = (U32**)malloc(sizeof(U32*));  // Allocate memory for the pointer
+    *task_ptr = (U32*)((U8*)MSP_INIT_VAL - MAIN_STACK_SIZE);
 
-	// initialize stack address that is available for thread stack
-	U32* MSP_INIT_VAL = *(U32**)0x0;
-	task_ptr = MSP_INIT_VAL - (MAIN_STACK_SIZE / sizeof(U32));
-
-	// insert the NULL task
-	OsInsertNullTask(task_ptr);
+    // insert the NULL task
+    OsInsertNullTask();
 }
 
 static void idle(void *arg)
@@ -115,11 +112,11 @@ int osCreateTask(TCB* task)
     // TODO: why comes memory floor? I didnt see perhaps missed
     	// should comes from (U32*)((U8*)MSP_INIT_VAL - _Min_Stack_Size)
 	U32* MSP_INIT_VAL = *(U32**)0x0;
-    if ((U32*)((U8*)task_ptr - task->stack_size) < (U32*)((U8*)MSP_INIT_VAL - MAX_STACK_SIZE)) {
+    if ((U32*)((U8*)*task_ptr - task->stack_size) < (U32*)((U8*)MSP_INIT_VAL - MAX_STACK_SIZE)) {
         return RTX_ERR;  // 0
     }
 
-    OsInsertTask(task, task_ptr, 0);
+    OsInsertTask(task, 0);  // insert regular task with is_null_task = 0
     return RTX_OK; // 1
 }
 
@@ -198,46 +195,26 @@ int osTaskExit(void)
 	// TODO: Implement task exit logic
 }
 
-__attribute__((naked)) void start_thread(U32* new_stack)
-{
-	__asm volatile(
-        "ldmia r0!, {r4-r11}  \n"  // "LDMIA": load multiple, increment after; restore R4~R11, R0 then pointed to next PSP
-		"msr psp, r0          \n"  // move(read) the data(incremented address) in R0(common register) to PSP(special register)
-
-        "movs r1, #2          \n"  // move(read) the data 0 to R1
-        "msr CONTROL, r1      \n"  // CONTROL = 0b10 -> thread mode, privileged, use PSP
-        "isb                  \n"  // ISB: instruction synchronization barrier, to make sure the above settings of PSP/CONTROL is active
-
-		"ldr lr, =0xFFFFFFFD  \n"  // manually set LR to EXC_RETURN, 0xFFFFFFFD = back to thread mode with PSP
-        "bx lr                \n"  // back to the next line where interrupt started(since we set PC in stack, so it will run print_continuously), special registers will be auto popped out
-    );
-}
-
 void SVC_Handler_Main(task_t* svc_args)
 {
 	U32 svc_num = 0;
 
 	U16* svc_pc = (U16*)svc_args[6];  // PC's address at [6] of current SP
-	U16 svc_instr = *(svc_pc - 1);  // 1.change to uint16_t* since data stored in the pointer(Instructions) is in 2 Bytes; 2."-1"(-1 two bytes = 1 instruction before) is where SVC instruction at
+	U16 svc_instr = *(svc_pc - 1);  // 1.change to U16* since data stored in the pointer(Instructions) is in 2 Bytes; 2."-1"(-1 two bytes = 1 instruction before) is where SVC instruction at
 	svc_num = svc_instr & 0xFF;  // only extract lower 8 bits (0~7) = 2 Bytes
 
-	printf(">>> SVC Number: %u\r\n", (task_t)svc_num);
+	printf(">>> SVC Number: %u\r\n", (unsigned int)svc_num);
 
 	switch (svc_num) {
 		case 0:
 			printf("SVC 0: Hi~\r\n");
 			break;
 		case 1:
-			printf("Syscall 1: \r\n");
-			osSwitchTask();
+			printf("Syscall 1: start_thread\r\n");
+			start_thread((U32*)svc_args[0]);	// here svc_args[0] is the old data(stack_top of thread 1, which is R4) of R0, it auto stored in stack when osThreadStart(stack_top) called SVC
 			break;
 		default:
-			printf("Unknown syscall: %u\r\n", (task_t)svc_num);
+			printf("Unknown syscall: %u\r\n", (unsigned long)svc_num);
 			break;
 	}
-}
-
-void osSwitchTask(void)
-{
-	// TODO: Implement task switching logic
 }

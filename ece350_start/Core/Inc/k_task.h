@@ -34,8 +34,10 @@ int osTaskInfo(task_t TID, TCB* task_copy);
 task_t osGetTID(void);
 int osTaskExit(void);
 
+// Internal functions
+void OsInsertTask(TCB* task, int is_null_task);
+void OsInsertNullTask(void);
 void start_thread(U32* new_stack);
 void SVC_Handler_Main(task_t* svc_args);
-void osSwitchTask(void);
 
 #endif /* INC_K_TASK_H_ */
