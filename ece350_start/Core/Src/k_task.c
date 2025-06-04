@@ -22,8 +22,9 @@ void OsInsertTask(TCB* task, int is_null_task) {
     task->tid = id;
     task->state = READY;
 
-    task->stack_high = (U32)*task_ptr;
-    task->stack_low = (U32)((U8*)*task_ptr - task->stack_size);    U32* sp = *task_ptr;
+    task->stack_high = (U32)task_ptr;
+    task->stack_low = (U32)((U8*)task_ptr - task->stack_size);    
+    U32* sp = task_ptr;
     *(--sp) = 1 << 24;                // xPSR: Thumb bit
     *(--sp) = (U32)(task->ptask);     // PC
     *(--sp) = 0xA;                    // LR
@@ -48,7 +49,7 @@ void OsInsertTask(TCB* task, int is_null_task) {
     t->stack_ptr  = task->stack_ptr;    task_count++;
     
     // Update global task_ptr to point to the next available stack space
-    *task_ptr = (U32*)task->stack_low;
+    task_ptr = (U32*)task->stack_low;
 }
 
 void OsInsertNullTask(void)
