@@ -14,8 +14,11 @@
 
 #define TID_NULL 0 //predefined Task ID for the NULL task
 #define MAX_TASKS 16 //maximum number of tasks in the system
-#define STACK_SIZE 0x800  //min. size of each task’s stack
-#define MAIN_STACK_SIZE 0x1600
+#define STACK_SIZE 0x400  //min. size of each task’s stack
+#define MAIN_STACK_SIZE 0x400
+
+
+#define INVALID_STACKPTR -1
 #define DORMANT 0 //state of terminated task
 #define READY 1 //state of task that can be scheduled but is not running
 #define RUNNING 2 //state of running task
