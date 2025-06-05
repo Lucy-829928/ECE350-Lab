@@ -9,13 +9,12 @@
 TCB tcb_list[MAX_TASKS];
 
 // stack addresses global
-U32* stack_addrs[MAX_TASKS];
 U32 os_running = 0;
 int g_current_task_idx; // <<< DEFINITION HERE
 U32 g_main_return_lr;
-U32 tcb_size = 20;
 
-
+U32 current_stack_top;
+U32 zeroth_stack_top;
 
 
 task_t osGetTID(){
@@ -24,7 +23,8 @@ task_t osGetTID(){
 
 // assume both uses 400
 
-int osKernelInit(){
+/*
+void osKernelInit(){
 	  g_current_task_idx = -1;
 
 
@@ -32,7 +32,10 @@ int osKernelInit(){
 	  U32* MSP_INIT_VAL = *(U32**)0x0;
 
 
+
 	  stack_addrs[0] = (U32*)((U32*)MSP_INIT_VAL - MAIN_STACK_SIZE); // (uint8_t*) to changed in Byte, since stack size is in Byte. Leave enough room for main
+
+
 	  //printf("Thread 1 stack start: %p\r\n", stack_addrs[0]);
 
 	  for (int i = 1; i < MAX_TASKS; ++i) {
@@ -50,17 +53,42 @@ int osKernelInit(){
 		  tcb_list[tcb_id].ptask = NULL;
 
 	  }
+}
+*/
+
+void osKernelInit(){
+	//printf("========== OS KERNEL INIT ========== \r\n");
+	  g_current_task_idx = -1;
 
 
 
+	  U32* MSP_INIT_VAL = *(U32**)0x0;
 
 
 
+	  current_stack_top = (U8*)((U32*)MSP_INIT_VAL - MAIN_STACK_SIZE);
+	  zeroth_stack_top = current_stack_top;
 
+	  // init all TCB blocks from TID = 0 to TID = max tasks -1 (all TCB blocks)
+	  for (int tcb_id = 0; tcb_id < MAX_TASKS; ++tcb_id){
 
+		  tcb_list[tcb_id].tid = tcb_id;
+		  tcb_list[tcb_id].state = DORMANT;
+		  tcb_list[tcb_id].stack_high = INVALID_STACKPTR;
+		  tcb_list[tcb_id].stack_size = INVALID_STACKPTR;
+		  tcb_list[tcb_id].ptask = NULL;
+
+	  }
 }
 
 int osCreateTask(TCB* task){
+
+
+	if (task == NULL || task->ptask == NULL || task->stack_size < STACK_SIZE || task->stack_size % 8 != 0) {
+	        return RTX_ERR; // Invalid task parameters
+	    }
+
+
 
 	// first find the next available spot
 	int next_available_space = -1;
@@ -68,23 +96,58 @@ int osCreateTask(TCB* task){
 	for (int i = 1; i < MAX_TASKS; i++){
 		if (tcb_list[i].state == DORMANT) {
 
+
+
 			next_available_space = i;
 			break;
-
 		}
 	}
 
 	if (next_available_space == -1){return RTX_ERR;}
+	//printf("--- CREATE [%d] begin --- \r\n", next_available_space);
+
+	// now we determine if the target has a stack high. If so, reuse it. If not so, do not reuse it.
+	// prioritizes reuse (if a dormant exists we reuse the dormant instead of allocating a new one)
+
+	if (tcb_list[next_available_space].stack_high == INVALID_STACKPTR){
+		//printf("CREATE encountered invalid stack ptr, newing a stack ptr for it \r\n");
+		// we get it a new one if this one doesn't work.
+		current_stack_top -= task->stack_size;
+
+		tcb_list[next_available_space].stack_high = current_stack_top;
+		tcb_list[next_available_space].stack_size = task->stack_size;
+
+	}else{
+
+		// handle extreme situations
+		if (task->stack_size > tcb_list[next_available_space].stack_size){
+
+			int refind_success = 0;
+			// time to re-find the best replacement.
+			for (int i = 1; i < MAX_TASKS; i++){
+
+				if (tcb_list[i].state == DORMANT && tcb_list[i].stack_size >= task->stack_size){
+					next_available_space = i;
+					refind_success = 1;
+					break;
+				}
+
+			}
+
+			if (refind_success == 0){
+				return RTX_ERR;
+			}
+
+
+		}
+
+
+	}
 
 	// now we have the index ready.
 
 	tcb_list[next_available_space].ptask = task->ptask;
 	tcb_list[next_available_space].state = READY;
-
-	if (task->stack_size > 0 && task->stack_size < 2500){
-		tcb_list[next_available_space].stack_size = task->stack_size;
-		tcb_list[next_available_space].stack_high = (U32)(stack_addrs[next_available_space] +  task->stack_size);
-	}
 
 
 	U32* stackptr = tcb_list[next_available_space].stack_high;
@@ -103,10 +166,15 @@ int osCreateTask(TCB* task){
 
 	tcb_list[next_available_space].sp = stackptr; // Correct: sp now points to the prepared stack frame
 
-	//printf("CREATED task, id = %d \r\n", next_available_space);
+	//printf("CREATED task, id = %d, stack_high = %lx \r\n", next_available_space, tcb_list[next_available_space].stack_high );
+	//printf("TCB INFO: \r\n");
+	//printTCB(next_available_space);
+
 
     task->tid = tcb_list[next_available_space].tid;
     task->stack_high = tcb_list[next_available_space].stack_high;
+
+
 	return RTX_OK;
 }
 
@@ -127,13 +195,15 @@ void create_idle_task(){
 
 	tcb_list[0].ptask = &idle_task;
 	tcb_list[0].state = READY;
+	tcb_list[0].stack_high =zeroth_stack_top;
+	tcb_list[0].stack_size = STACK_SIZE;
+
 
 	U32* stackptr = tcb_list[0].stack_high;
 
 	*(--stackptr) = 0x01000000;
 	*(--stackptr) = (U32)(tcb_list[0].ptask);  // PC: when SVC is exited, run print_continuously
 	*(--stackptr) = (U32)osTaskExitHandler;                    // LR
-	//*(--stackptr) = 0xFFFFFFFD;                    // LR
 
 	*(--stackptr) = 0xF;                    // R12
 	*(--stackptr) = 0xF;                    // R3
@@ -153,7 +223,7 @@ void create_idle_task(){
 
 
 int osKernelStart() {
-
+	//printf(" ============= KERNEL START ============= \r\n");
 
 	create_idle_task();
 
@@ -182,8 +252,8 @@ int osKernelStart() {
 
     if (first_task_idx == -1) {
         // No task to run, kernel cannot start.
-        // This is an error, or could enter an idle loop.
-        return RTX_ERR; // Or handle error appropriately
+        // This is an error, or could enter an idle loop. solution : set it to 0 to run idle task.
+    	first_task_idx = 0; // Or handle error appropriately
     }
 
     g_current_task_idx = first_task_idx;
@@ -255,11 +325,10 @@ void osYield(){
 }
 
 int osTaskInfo(task_t TID, TCB* task_copy){
+    if (TID > (MAX_TASKS-1) || TID < 0 || task_copy == NULL || tcb_list[TID].state == DORMANT) {
+        return RTX_ERR;
+    }
 
-
-	if (TID > (MAX_TASKS-1) || TID < 0){
-		return RTX_ERR;
-	}
 
 	task_copy->ptask = tcb_list[TID].ptask;
 	task_copy->sp = tcb_list[TID].sp;
@@ -278,10 +347,10 @@ int printTCB(task_t TID){
 	osTaskInfo(TID, &test_tcb);
 
 	printf("--- TCB [%d] --- \r\n", TID);
-	printf("| TCB program ptr [%d] --- \r\n", test_tcb.ptask);
-	printf("| TCB stack ptr [%d] --- \r\n", test_tcb.sp);
-	printf("| TCB stack high [%d] --- \r\n", test_tcb.stack_high);
-	printf("| TCB state 0 dormant 1 ready 2 running: [%d] --- \r\n", test_tcb.state);
+	printf("|== TCB program ptr 0x[%lx] ==| \r\n", test_tcb.ptask);
+	printf("|== TCB stack ptr 0x[%lx] ==| \r\n", test_tcb.sp);
+	printf("|== TCB stack high 0x[%lx] ==| \r\n", test_tcb.stack_high);
+	printf("|== TCB state 0 dormant 1 ready 2 running: [%d] ==| \r\n", test_tcb.state);
 	printf("--- TCB printout completed ---\r\n");
 
 	return 0;
@@ -329,9 +398,3 @@ void osTaskExitHandler(void) {
 }
 
 
-int testing_fx(){
-
-
-
-	return 0;
-}
