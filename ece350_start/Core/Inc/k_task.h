@@ -28,7 +28,7 @@ typedef struct task_control_block {
 } TCB;
 
 
-int osKernelInit();
+void osKernelInit();
 int osCreateTask(TCB* task);
 void scheduler(void);
 void osYield();
@@ -42,7 +42,6 @@ void create_idle_task();
 task_t osGetTID();
 
 
-void init_tcb(TCB* tcb, task_t tid, void (*task_func)(void*), U16 stack_size_bytes, U8 initial_state, void* task_args);
 extern int g_current_task_idx;
 extern TCB tcb_list[];
 
