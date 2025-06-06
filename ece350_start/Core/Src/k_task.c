@@ -84,7 +84,7 @@ void osKernelInit(){
 int osCreateTask(TCB* task){
 
 
-	if (task == NULL || task->ptask == NULL || task->stack_size < STACK_SIZE || task->stack_size % 8 != 0) {
+	if (task == NULL || task->ptask == NULL || task->stack_size % 8 != 0) {
 	        return RTX_ERR; // Invalid task parameters
 	    }
 
@@ -101,6 +101,10 @@ int osCreateTask(TCB* task){
 			next_available_space = i;
 			break;
 		}
+	}
+
+	if (task->stack_size == 0){
+		task->stack_size = STACK_SIZE;
 	}
 
 	if (next_available_space == -1){return RTX_ERR;}
