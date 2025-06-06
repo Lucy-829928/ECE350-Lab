@@ -103,8 +103,6 @@ int main(void)
     printf("State: %d\r\n", task_info.state);
     printf("Stack Size: %d\r\n", task_info.stack_size);
     printf("Stack High: %p\r\n", (void*)task_info.stack_high);
-    printf("Stack Low: %p\r\n", (void*)task_info.stack_low);
-    printf("Stack Pointer: %p\r\n", (void*)task_info.stack_ptr);
   }
   else
   {
