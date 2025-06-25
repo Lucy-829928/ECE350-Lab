@@ -26,6 +26,7 @@ void osKernelInit() {
     U32* MSP_INIT_VAL = *(U32**)0x0;
 	current_stack_top = (U32)((U8*)MSP_INIT_VAL - MAIN_STACK_SIZE);
     zeroth_stack_top = current_stack_top;
+    current_stack_top -= STACK_SIZE;
 
     // init all TCB blocks from TID = 0 to TID = max tasks -1 (all TCB blocks)
     for (int tcb_id = 0; tcb_id < MAX_TASKS; ++tcb_id) {
