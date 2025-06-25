@@ -24,8 +24,7 @@ void osKernelInit() {
     // printf("========== OS KERNEL INIT ========== \r\n");
     g_current_task_idx = -1;
     U32* MSP_INIT_VAL = *(U32**)0x0;
-	// FIX @ z222ye: I dont think ptr arithmetic works with U32* and U8* in this case, so we cast it to U8* first.
-	current_stack_top = (U8*)((U32*)MSP_INIT_VAL - MAIN_STACK_SIZE);
+	current_stack_top = (U32)((U8*)MSP_INIT_VAL - MAIN_STACK_SIZE);
     zeroth_stack_top = current_stack_top;
 
     // init all TCB blocks from TID = 0 to TID = max tasks -1 (all TCB blocks)
@@ -62,7 +61,6 @@ int osCreateTask(TCB* task) {
     if (tcb_list[next_available_space].stack_high == INVALID_STACKPTR) {
         // we get it a new one if this one doesn't work.
 		// FIX @ z222ye: stack high and ptr is messing up with each other
-        current_stack_top -= task->stack_size;
         tcb_list[next_available_space].stack_high = current_stack_top;
         tcb_list[next_available_space].stack_size = task->stack_size;
     } else {
@@ -85,8 +83,7 @@ int osCreateTask(TCB* task) {
     // now we have the index ready.
     tcb_list[next_available_space].ptask = task->ptask;
     tcb_list[next_available_space].state = READY;
-	// FIX @ z222ye: in case where the stack is not first time used, we didnt reset the stack
-    U32* stackptr = tcb_list[next_available_space].stack_high;
+    U32* stackptr = (U32*)tcb_list[next_available_space].stack_high;
     *(--stackptr) = 0x01000000;
     *(--stackptr) = (U32)(tcb_list[next_available_space].ptask);  // PC: when SVC is exited, run print_continuously
     *(--stackptr) = (U32)osTaskExitHandler;                      // LR
@@ -99,8 +96,12 @@ int osCreateTask(TCB* task) {
         *(--stackptr) = next_available_space;                    // R4–R11 (R11 first, then R10, ..., R4)
     }
     tcb_list[next_available_space].sp = stackptr; // Correct: sp now points to the prepared stack frame
+
+    current_stack_top -= task->stack_size;
+
+    task->sp = tcb_list[next_available_space].sp; // Set the stack pointer of the task
+    task->state = tcb_list[next_available_space].state; // Set the state of the task
     task->tid = tcb_list[next_available_space].tid;
-	// FIX @ z222ye: why put here? why not set it at the time we update the size
     task->stack_high = tcb_list[next_available_space].stack_high;
     return RTX_OK;
 }
@@ -119,7 +120,7 @@ void create_idle_task() {
     tcb_list[0].state = READY;
     tcb_list[0].stack_high = zeroth_stack_top;
     tcb_list[0].stack_size = STACK_SIZE;
-    U32* stackptr = tcb_list[0].stack_high;
+    U32* stackptr = (U32*)tcb_list[0].stack_high;
     *(--stackptr) = 0x01000000;
     *(--stackptr) = (U32)(tcb_list[0].ptask);  // PC: when SVC is exited, run print_continuously
     *(--stackptr) = (U32)osTaskExitHandler;    // LR
@@ -171,8 +172,7 @@ int osKernelStart() {
 
 void scheduler(void) {
     int prev_task_idx = g_current_task_idx;
-	// FIX @ z222ye: meaningless to be assigned to prev_task_idx but making it confusing
-    int next_candidate_idx = prev_task_idx;
+    int next_candidate_idx;
     if (prev_task_idx != -1 && tcb_list[prev_task_idx].state == RUNNING) {
         tcb_list[prev_task_idx].state = READY; // Mark current task as ready (if it wasn't blocked/terminated)
     }
