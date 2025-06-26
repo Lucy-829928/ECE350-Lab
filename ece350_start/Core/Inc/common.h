@@ -16,7 +16,7 @@
 #define MAX_TASKS 16 //maximum number of tasks in the system
 #define STACK_SIZE 0x400  //min. size of each task’s stack
 #define MAIN_STACK_SIZE 0x400
-
+#define _Min_Stack_Size 0x4000 //stack memory reserved
 
 #define INVALID_STACKPTR -1
 #define DORMANT 0 //state of terminated task
