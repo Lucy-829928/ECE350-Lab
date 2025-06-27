@@ -27,7 +27,7 @@ typedef struct mem_header {
 
 int k_mem_init();
 void* k_mem_alloc(size_t size);
-void k_mem_dealloc(void* ptr);
+int k_mem_dealloc(void* ptr);
 int k_mem_count_extfrag(size_t size);
 size_t align4(size_t size);
 
