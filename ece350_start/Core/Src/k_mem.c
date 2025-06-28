@@ -148,6 +148,7 @@ void* k_mem_alloc(size_t size) {
 
 
 int k_mem_dealloc(void* ptr){
+    mem_header_t* target_mem = (mem_header_t*) ((U8*)ptr - metadata_size);
 
 	int current_tid = osGetTID();
 	if (current_tid != target_mem->PID){
@@ -155,7 +156,6 @@ int k_mem_dealloc(void* ptr){
 		//printf("TID not equal: %d and %d \r\n", current_tid, osGetTID());
 		return RTX_ERR;
 	}
-    mem_header_t* target_mem = (mem_header_t*) ((U8*)ptr - metadata_size);
     target_mem->is_allocated = 0;
 
     // try coalescing with next
