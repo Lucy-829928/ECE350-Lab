@@ -1,22 +1,110 @@
-#include "common.h"
-#include "k_task.h"
+//#include "main.h"
+//#include <stdio.h>
+//#include "common.h"
+//#include "k_task.h"
+//#include "k_mem.h"
+//
+//#define  ARM_CM_DEMCR      (*(uint32_t *)0xE000EDFC)
+//#define  ARM_CM_DWT_CTRL   (*(uint32_t *)0xE0001000)
+//#define  ARM_CM_DWT_CYCCNT (*(uint32_t *)0xE0001004)
+//
+//
+//
+//
+//int main(void)
+//{
+//
+//  /* MCU Configuration: Don't change this or the whole chip won't work!*/
+//
+//  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+//  HAL_Init();
+//  /* Configure the system clock */
+//  SystemClock_Config();
+//
+//  /* Initialize all configured peripherals */
+//  MX_GPIO_Init();
+//  MX_USART2_UART_Init();
+//  /* MCU Configuration is now complete. Start writing your code below this line */
+//
+//  osKernelInit();
+//  k_mem_init();
+//
+//  if (ARM_CM_DWT_CTRL != 0) {        // See if DWT is available
+//	  printf("Using DWT\r\n\r\n");
+//      ARM_CM_DEMCR      |= 1 << 24;  // Set bit 24
+//      ARM_CM_DWT_CYCCNT  = 0;
+//      ARM_CM_DWT_CTRL   |= 1 << 0;   // Set bit 0
+//  }else{
+//	  printf("DWT not available \r\n\r\n");
+//  }
+//
+//  int N = 100;
+//  volatile U32* p_temp;
+//  uint32_t timestamps[N+1];
+//
+////System under test---------------------
+//  //measure time to allocate N block
+//  for (int i = 0; i < N; i ++){
+//	  timestamps[i] = ARM_CM_DWT_CYCCNT;
+//	  p_temp = (U32*)k_mem_alloc(4);
+//  }
+//  timestamps[N] = ARM_CM_DWT_CYCCNT;
+//  //print total clock ticks as well as ticks per iteration
+//  printf("k_mem_alloc time: %lu\r\n", timestamps[N] - timestamps[0]);
+//  printf("Time per iteration:\r\n");
+//  for (int i = 0; i < N; i ++){
+//	  printf("%u, ", timestamps[i+1] - timestamps[i]);
+//  }
+//  printf("\r\n\r\n");
+//
+///*
+////Compiler's version-------------------
+//  //measure time to allocate N block
+//  for (int i = 0; i < N; i ++){
+//	  timestamps[i] = ARM_CM_DWT_CYCCNT;
+//	  p_temp = (U32*)malloc(4);
+//  }
+//  timestamps[N] = ARM_CM_DWT_CYCCNT;
+//  //print total clock ticks as well as ticks per iteration
+//  printf("malloc time: %lu\r\n", timestamps[N] - timestamps[0]);
+//  printf("Time per iteration:\r\n");
+//  for (int i = 0; i < N; i ++){
+//	  printf("%u, ", timestamps[i+1] - timestamps[i]);
+//  }
+//  printf("\r\n\r\n");
+//*/
+//
+//  printf("back to main\r\n");
+//  while (1);
+// }
+
 #include "main.h"
 #include <stdio.h>
+#include "common.h"
+#include "k_task.h"
+#include "k_mem.h"
+#include <stdlib.h> //for testing
+#include "string.h" //for testing
 
-#define EXPECTED_MAX_TASKS 16
-#define TEST_STACK_SIZE 0x400
+#define ITERATIONS 100
+uint8_t s_data_string[1000] = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus elementum semper nisi. Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum. N";
+uint8_t* p_buffers[ITERATIONS];
+uint8_t i_checksums[ITERATIONS];
+uint32_t i_buffer_sizes[ITERATIONS];
+uint32_t i_total_alloc_bytes = 0;
 
-void f_test_task(void*) {
-   printf("PASS: kernel kept its own copy of TCB\r\n");
-   while (1); //does not yield
+uint8_t CalcChecksum(uint8_t* p_buffer, uint32_t i_buffer_size){
+	uint8_t checksum = 0;
+	for (int i = 0; i < i_buffer_size; i++){
+		checksum = checksum ^ p_buffer[i];
+	}
+	return checksum;
 }
 
-void f_print_fail(void*) {
-   printf("FAIL: first task was clobbered\r\n");
-   while (1);
-}
 
-int main(void) {
+int main(void)
+{
+
   /* MCU Configuration: Don't change this or the whole chip won't work!*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -30,60 +118,77 @@ int main(void) {
   /* MCU Configuration is now complete. Start writing your code below this line */
 
   osKernelInit();
+  k_mem_init();
 
-  TCB mytask = (TCB){
-    .ptask = &f_test_task, //expect this to go into kernel's copy
-    .stack_size = TEST_STACK_SIZE, //expect this to go into kernel's copy
-    .tid = 0xff, //kernel to assign a TID between 1-15
-    .stack_high = 0, //expect kernel's copy to get an allocated stack address
-  };
+  uint32_t size, r;
+  uint32_t cnt_alloc_fails = 0;
+  uint32_t cnt_dealloc_fails = 0;
+  uint32_t cnt_checksum_fails = 0;
 
-  if (osCreateTask(&mytask) != RTX_OK) { //if successful this should have updated the user's copy with the TID assigned
-    printf("FAIL: osCreateTask failed\r\n");
-    return 0;
+  printf("\r\n\r\n");
+  printf("Starting testing ================================\r\n");
+
+  for (int i = 0; i < ITERATIONS; i++ ){
+
+	  if (i_total_alloc_bytes < 0x8000) { //proceed if we are still under 32KB of allocated bytes (most projects seem to have > 40KB of free space)
+		  size = rand() % 1000; //select a random buffer size
+		  p_buffers[i] = k_mem_alloc(size); //allocate buffer
+		  printf("itr=%d, alloc %lu bytes, ptr=%p\r\n", i, size, p_buffers[i]);
+
+		  if (p_buffers[i] != NULL){ //success
+			  i_buffer_sizes[i] = size; //keep track of this allocation
+			  i_checksums[i] = CalcChecksum(s_data_string, size); //calculate checksum on original data, for the portion that will fit into this buffer
+			  memcpy(p_buffers[i], s_data_string, size); //fill the buffer fully with data (memcpy function used for testing only)
+			  i_total_alloc_bytes = i_total_alloc_bytes + size;
+		  } else { //did not allocate (should be due to fragmentation)
+			  printf("NULL POINTER (allocation failed)\r\n\r\n");
+			  cnt_alloc_fails = cnt_alloc_fails + 1;
+			  i_buffer_sizes[i]=0;
+		  }
+	  } else { //skip this iteration if we have used up >= 32KB of the heap
+				//hence the only legitimate reason alloc might fail is fragmentation
+
+		  i_buffer_sizes[i] = 0;
+		  p_buffers[i] = NULL;
+		  //printf("itr=%d, skipped (%lu bytes used up)\r\n", i, i_total_alloc_bytes);
+		}
+
+	  if (i > 0 && i % 2 == 0){ //deallocate something on every other iteration
+		  do{
+			  r = rand() % i;
+		  } while(i_buffer_sizes[r] == 0);//repeat until finding a buffer that still exists (not deallocated already)
+
+		  printf("dealloc mem from itr %lu, ptr=%p, ~%lu bytes\r\n", r, p_buffers[r], i_buffer_sizes[r]);
+		  if (k_mem_dealloc(p_buffers[r]) != RTX_ERR) { //success
+			  i_total_alloc_bytes = i_total_alloc_bytes - i_buffer_sizes[r];
+			  i_buffer_sizes[r] = 0; //keep track of the dealloc
+			  p_buffers[r] = NULL;
+		  }else{
+			  printf("RTX_ERR (deallocation failed)\r\n\r\n");
+			  cnt_dealloc_fails += 1;
+		  }
+	  }
   }
 
-  TCB task_readback = (TCB){  //create a fresh object to ensure osTaskInfo did something
-     .ptask = 0,
-     .stack_size = 0,
-     .tid = 0xff,
-     .stack_high = 0
-  };
+  printf("Validating buffer contents... \r\n");
 
-  if ((mytask.tid >= EXPECTED_MAX_TASKS) || (mytask.tid == 0 )) { //expect between 1-15
-    printf("FAIL: osCreateTask did not update the input TCB with a valid TID \r\n\r\n");
-    return 0;
-  } else {
-    printf("PASS: osCreateTask updated the input TCB with a valid TID %u\r\n\r\n", mytask.tid);
-  	if (osTaskInfo(mytask.tid, &task_readback) != RTX_OK) {
-            printf("FAIL: osTaskInfo failed\r\n");
-            return 0;
-	}
+  uint8_t checksum;
+  for (int i = 0; i < ITERATIONS; i++ ){
+	  if (i_buffer_sizes[i] > 0){
+		  checksum = CalcChecksum(p_buffers[i], i_buffer_sizes[i]);
+		  if (checksum != i_checksums[i]){
+			  cnt_checksum_fails += 1;
+			  printf("buffer from itr %d corrupted, checksum=%u, expected=%u \r\n\r\n", i, checksum, i_checksums[i]);
+		  }
+	  }
   }
 
-  printf("Values retrieved by osTaskInfo:\r\n");
-  printf("ptask=%p\r\n", task_readback.ptask);
-  printf("stack_high=0x%x\r\n", task_readback.stack_high);
-  printf("tid=%u\r\n", task_readback.tid);
-  printf("state=0x%x\r\n", task_readback.state);
-  printf("stack_size=0x%x\r\n", task_readback.stack_size);
-
-  // check population of TCB
-  if (task_readback.tid == mytask.tid && task_readback.stack_high != 0 && task_readback.ptask == &f_test_task && task_readback.stack_size == TEST_STACK_SIZE)
-    printf("PASS: TCB populated correctly\r\n\r\n");
-  else
-    printf("FAIL: TCB not populated correctly\r\n\r\n");
+  printf("Total corrupted buffers = %lu \r\n", cnt_checksum_fails);
+  printf("Total failed allocs = %lu \r\n", cnt_alloc_fails);
+  printf("Total failed deallocs = %lu \r\n", cnt_dealloc_fails);
 
 
-  //create another task, everything the same except task function.
-  //This function should never start if the first task is working (because it doesn't yield)
-  mytask.ptask = &f_print_fail;
-  if (osCreateTask(&mytask) != RTX_OK) {
-    printf("FAIL: osCreateTask failed\r\n");
-    return 0;
-  }
-
-  osKernelStart();
-
+  printf("back to main\r\n");
   while (1);
-}
+ }
+

@@ -23,16 +23,23 @@ typedef struct mem_header {
     int is_allocated;  // 1: allocated; 0: free // 4 bytes
     struct mem_header* next; // 4/8 bytes
     struct mem_header* prev; // 4/8 bytes
-} mem_header_t; // sizeof: 16/28 bytes
+
+    // pointer for free list
+	struct mem_header* next_free; // 4/8 bytes
+	struct mem_header* prev_free; // 4/8 bytes
+} mem_header_t; // sizeof: 24/44 bytes
 
 int k_mem_init();
 void* k_mem_alloc(size_t size);
 int k_mem_dealloc(void* ptr);
 int k_mem_count_extfrag(size_t size);
+
 size_t align4(size_t size);
+void insert_into_free_list(mem_header_t* block);
+void remove_from_free_list(mem_header_t* block);
 
 // printf("End of Image: %x\r\n", &_img_end);
-// &_img_end 才是我们要的“地址值”
+// &_img_end is the "end address" we want
 extern U32 _img_end;
 extern U32 _estack;
 
