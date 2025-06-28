@@ -136,7 +136,6 @@ void* k_mem_alloc(size_t size) {
 	        first_fit->next = new_header;
 
 	        first_fit->PID = osGetTID();
-	        printf("ALLOCATED address with location of metadata %lx \r\n", first_fit);
 
 	        // add new free block to free list
 	        new_header->next_free = NULL;
