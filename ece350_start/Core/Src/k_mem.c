@@ -153,7 +153,7 @@ int k_mem_dealloc(void* ptr){
 	int current_tid = osGetTID();
 	if (current_tid != target_mem->PID){
 
-		//printf("TID not equal: %d and %d \r\n", current_tid, osGetTID());
+		//printf("TID not equal: %d and %d \r\n", target_mem->PID, current_tid);
 		return RTX_ERR;
 	}
     target_mem->is_allocated = 0;
@@ -180,6 +180,7 @@ int k_mem_dealloc(void* ptr){
         }
         target_mem = prev_block;
     }
+    target_mem->PID = 65536;
 
     insert_into_free_list(target_mem);
     return RTX_OK;
