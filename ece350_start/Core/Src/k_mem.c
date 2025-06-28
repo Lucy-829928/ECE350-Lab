@@ -84,7 +84,7 @@ int k_mem_init() {
 
 void* k_mem_alloc(size_t size) {
 //	printf("Trying to allocate mem\r\n");
-	//printf("alloc Request size=%lu, metadata_size=%lu\r\n", size, metadata_size);
+	printf("alloc Request size=%lu, metadata_size=%lu\r\n", size, metadata_size);
 	    if (!is_initialized || size == 0) {
 	        return NULL;
 	    }
@@ -149,68 +149,40 @@ void* k_mem_alloc(size_t size) {
 
 int k_mem_dealloc(void* ptr){
 
-	mem_header_t* target_mem = (mem_header_t*) ((U8*)ptr - metadata_size);
-
 	int current_tid = osGetTID();
 	if (current_tid != target_mem->PID){
 
 		//printf("TID not equal: %d and %d \r\n", current_tid, osGetTID());
 		return RTX_ERR;
 	}
-
-	//printf("got next target mem position , self at %lx, size %d, is_alloc %d, next %lx, prev %lx  \r\n", (int)target_mem, target_mem->size, target_mem->is_allocated, target_mem->next, target_mem->prev);
-
-    mem_header_t* current = first_item;
-	//printf("got free list, self at %lx, size %d ,is_alloc %d ,next %lx ,prev %lx  \r\n", (int)current, current->size, current->is_allocated, current->next, current->prev);
-
-    while (current != NULL) {
-    	// find the current one
-    	if (current == target_mem){break;}
-    	if (current->is_allocated != 0 && current->is_allocated != 1){
-    		//printf("UNDEFINED memory position: 0x%lx \r\n", current);
-    		return RTX_ERR;
-    	}
-    	current = current->next;
-
-    }
-
-    if (current == NULL)
-    {
-    	//printf("did not get valid results \r\n");
-    	return RTX_ERR;
-    }
-
-    // see if its next and prev EXISTS
-    // if they do exist, then go to that place and see if they are free or not
-
-    // De-allocate the block
+    mem_header_t* target_mem = (mem_header_t*) ((U8*)ptr - metadata_size);
     target_mem->is_allocated = 0;
 
-    // Coalesce with next block if it is free
+    // try coalescing with next
     mem_header_t* next_block = target_mem->next;
-    if (next_block != NULL && !next_block->is_allocated) {
+    if (next_block && !next_block->is_allocated) {
+        remove_from_free_list(next_block);
         target_mem->size += next_block->size;
         target_mem->next = next_block->next;
-        // FIX: Update the back-pointer of the block that was after 'next_block'
-        if (target_mem->next != NULL) {
-            target_mem->next->prev = target_mem;
+        if (next_block->next) {
+            next_block->next->prev = target_mem;
         }
     }
 
-    // Coalesce with previous block if it is free
+    // try coalescing with prev
     mem_header_t* prev_block = target_mem->prev;
-    if (prev_block != NULL && !prev_block->is_allocated) {
+    if (prev_block && !prev_block->is_allocated) {
+        remove_from_free_list(prev_block);
         prev_block->size += target_mem->size;
         prev_block->next = target_mem->next;
-        // FIX: Update the back-pointer of the block that was after 'target_mem'
-        if (prev_block->next != NULL) {
-            prev_block->next->prev = prev_block;
+        if (target_mem->next) {
+            target_mem->next->prev = prev_block;
         }
+        target_mem = prev_block;
     }
 
+    insert_into_free_list(target_mem);
     return RTX_OK;
-
-
 
 }
 
