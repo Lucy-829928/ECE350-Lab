@@ -157,8 +157,7 @@ testing if 8 bytes can fit at 0x2000844c
 PASS: k_mem_dealloc coalesced with a free block after it
 deallocating 0x2000848c, which is after a free block
 testing if 12 bytes can fit at 0x2000844c 
-k_mem_alloc returned unexpected pointer 0x20008550
-FAIL: k_mem_dealloc did not coalesce with a free block before it
+PASS: k_mem_dealloc coalesced with a free block before it
 deallocating 0x200083ec, which is between two free blocks
 testing if 12 bytes can fit at 0x200083cc 
 PASS: k_mem_dealloc coalesced with two free blocks
@@ -166,7 +165,7 @@ PASS: k_mem_dealloc coalesced with two free blocks
 <end of test>
 
 ```
-### your score: 0.67/1.00
+### your score: 1.00/1.00
 
 ## test4
 If a piece of left-over free memory is too small for a block, it is not leaked/lost, and it does not clobber the subsequent block.
@@ -185,12 +184,12 @@ PASS: sliver of memory was not lost
 ---- test4 ----
 PASS: k_mem_dealloc returned OK
 PASS: deallocated block was reusable
-FAIL: sliver of memory was lost
+PASS: sliver of memory was not lost
 <serial timeout>
 <end of test>
 
 ```
-### your score: 0.67/1.00
+### your score: 1.00/1.00
 
 ## test5
 Allocations are 4-byte aligned.
@@ -335,11 +334,10 @@ also dealloc mem from itr 16, ptr=0x2000a004, ~592 bytes
 itr=19, alloc 624 bytes, ptr=0x2000a4b4
 itr=20, alloc 635 bytes, ptr=0x2000a740
 also dealloc mem from itr 10, ptr=0x20008a88, ~330 bytes
-RTX_ERR
 itr=21, alloc 862 bytes, ptr=0x2000a9d8
-itr=22, alloc 484 bytes, ptr=0x20008d18
+itr=22, alloc 484 bytes, ptr=0x200088e0
 also dealloc mem from itr 13, ptr=0x20009658, ~972 bytes
-itr=23, alloc 301 bytes, ptr=0x200088e0
+itr=23, alloc 301 bytes, ptr=0x20008d18
 itr=24, alloc 710 bytes, ptr=0x20009658
 also dealloc mem from itr 12, ptr=0x20009298, ~932 bytes
 itr=25, alloc 876 bytes, ptr=0x20009298
@@ -348,76 +346,72 @@ also dealloc mem from itr 19, ptr=0x2000a4b4, ~624 bytes
 itr=27, alloc 397 bytes, ptr=0x2000a4b4
 itr=28, alloc 675 bytes, ptr=0x2000ad54
 also dealloc mem from itr 2, ptr=0x20008bf4, ~262 bytes
-itr=29, alloc 344 bytes, ptr=0x2000b014
-itr=30, alloc 134 bytes, ptr=0x20008bf4
+itr=29, alloc 344 bytes, ptr=0x20008ae0
+itr=30, alloc 134 bytes, ptr=0x20008c54
 also dealloc mem from itr 25, ptr=0x20009298, ~876 bytes
 itr=31, alloc 629 bytes, ptr=0x20009298
 itr=32, alloc 30 bytes, ptr=0x200086f4
-also dealloc mem from itr 23, ptr=0x200088e0, ~301 bytes
-itr=33, alloc 126 bytes, ptr=0x200088e0
-itr=34, alloc 743 bytes, ptr=0x2000b188
+also dealloc mem from itr 23, ptr=0x20008d18, ~301 bytes
+itr=33, alloc 126 bytes, ptr=0x20008cf8
+itr=34, alloc 743 bytes, ptr=0x2000b014
 also dealloc mem from itr 32, ptr=0x200086f4, ~30 bytes
-itr=35, alloc 256 bytes, ptr=0x2000952c
-itr=36, alloc 932 bytes, ptr=0x2000b48c
-also dealloc mem from itr 34, ptr=0x2000b188, ~743 bytes
-itr=37, alloc 509 bytes, ptr=0x2000b188
-itr=38, alloc 119 bytes, ptr=0x2000897c
+itr=35, alloc 256 bytes, ptr=0x20008d94
+itr=36, alloc 932 bytes, ptr=0x2000b318
+also dealloc mem from itr 34, ptr=0x2000b014, ~743 bytes
+itr=37, alloc 509 bytes, ptr=0x2000b014
+itr=38, alloc 119 bytes, ptr=0x2000952c
 also dealloc mem from itr 31, ptr=0x20009298, ~629 bytes
 itr=39, alloc 327 bytes, ptr=0x20009298
-itr=40, alloc 719 bytes, ptr=0x2000b84c
+itr=40, alloc 719 bytes, ptr=0x2000b6d8
 also dealloc mem from itr 17, ptr=0x2000a270, ~551 bytes
-itr=41, alloc 824 bytes, ptr=0x2000bb38
+itr=41, alloc 824 bytes, ptr=0x2000b9c4
 itr=42, alloc 596 bytes, ptr=0x2000a1d0
 also dealloc mem from itr 27, ptr=0x2000a4b4, ~397 bytes
 itr=43, alloc 356 bytes, ptr=0x2000a440
 itr=44, alloc 184 bytes, ptr=0x200093fc
-also dealloc mem from itr 41, ptr=0x2000bb38, ~824 bytes
+also dealloc mem from itr 41, ptr=0x2000b9c4, ~824 bytes
 itr=45, alloc 245 bytes, ptr=0x2000a5c0
 itr=46, alloc 7 bytes, ptr=0x200086f4
-also dealloc mem from itr 40, ptr=0x2000b84c, ~719 bytes
-itr=47, alloc 352 bytes, ptr=0x2000b84c
-itr=48, alloc 665 bytes, ptr=0x2000b9c8
-also dealloc mem from itr 47, ptr=0x2000b84c, ~352 bytes
-itr=49, alloc 738 bytes, ptr=0x2000bc80
+also dealloc mem from itr 40, ptr=0x2000b6d8, ~719 bytes
+itr=47, alloc 352 bytes, ptr=0x2000b6d8
+itr=48, alloc 665 bytes, ptr=0x2000b854
+also dealloc mem from itr 47, ptr=0x2000b6d8, ~352 bytes
+itr=49, alloc 738 bytes, ptr=0x2000bb0c
 now deallocate everything...
 dealloc mem from itr 7, ptr=0x20008764, ~351 bytes
 dealloc mem from itr 8, ptr=0x20008f30, ~843 bytes
-dealloc mem from itr 10, ptr=0x20008a88, ~330 bytes
-RTX_ERR
 dealloc mem from itr 14, ptr=0x20009a40, ~868 bytes
 dealloc mem from itr 15, ptr=0x20009dc0, ~549 bytes
 dealloc mem from itr 18, ptr=0x2000852c, ~427 bytes
 dealloc mem from itr 20, ptr=0x2000a740, ~635 bytes
 dealloc mem from itr 21, ptr=0x2000a9d8, ~862 bytes
-dealloc mem from itr 22, ptr=0x20008d18, ~484 bytes
-RTX_ERR
+dealloc mem from itr 22, ptr=0x200088e0, ~484 bytes
 dealloc mem from itr 24, ptr=0x20009658, ~710 bytes
 dealloc mem from itr 26, ptr=0x2000a004, ~431 bytes
 dealloc mem from itr 28, ptr=0x2000ad54, ~675 bytes
-dealloc mem from itr 29, ptr=0x2000b014, ~344 bytes
-dealloc mem from itr 30, ptr=0x20008bf4, ~134 bytes
-dealloc mem from itr 33, ptr=0x200088e0, ~126 bytes
-dealloc mem from itr 35, ptr=0x2000952c, ~256 bytes
-RTX_ERR
-dealloc mem from itr 36, ptr=0x2000b48c, ~932 bytes
-dealloc mem from itr 37, ptr=0x2000b188, ~509 bytes
-dealloc mem from itr 38, ptr=0x2000897c, ~119 bytes
+dealloc mem from itr 29, ptr=0x20008ae0, ~344 bytes
+dealloc mem from itr 30, ptr=0x20008c54, ~134 bytes
+dealloc mem from itr 33, ptr=0x20008cf8, ~126 bytes
+dealloc mem from itr 35, ptr=0x20008d94, ~256 bytes
+dealloc mem from itr 36, ptr=0x2000b318, ~932 bytes
+dealloc mem from itr 37, ptr=0x2000b014, ~509 bytes
+dealloc mem from itr 38, ptr=0x2000952c, ~119 bytes
 dealloc mem from itr 39, ptr=0x20009298, ~327 bytes
 dealloc mem from itr 42, ptr=0x2000a1d0, ~596 bytes
 dealloc mem from itr 43, ptr=0x2000a440, ~356 bytes
 dealloc mem from itr 44, ptr=0x200093fc, ~184 bytes
 dealloc mem from itr 45, ptr=0x2000a5c0, ~245 bytes
 dealloc mem from itr 46, ptr=0x200086f4, ~7 bytes
-dealloc mem from itr 48, ptr=0x2000b9c8, ~665 bytes
-dealloc mem from itr 49, ptr=0x2000bc80, ~738 bytes
+dealloc mem from itr 48, ptr=0x2000b854, ~665 bytes
+dealloc mem from itr 49, ptr=0x2000bb0c, ~738 bytes
 
-Maximum allocation accepted at the end = 43432 bytes
-FAIL: heap space size has changed
+Maximum allocation accepted at the end = 47828 bytes
+PASS: heap space is back in one piece
 <serial timeout>
 <end of test>
 
 ```
-### your score: 0.00/1.00
+### your score: 1.00/1.00
 
 ## test9
 Execution time over a series of allocations; excution time over a series of deallocations. (Thresholds are calculated as the midpoint between the compiler's implementation and linear search through all blocks.)
@@ -444,9 +438,9 @@ Time per iteration:
 ---- test9 ----
 Using DWT for timing
 
-k_mem_alloc runtime=39629
+k_mem_alloc runtime=39624
 Time per iteration:
-426, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 395, 
+421, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 396, 395, 
 
 k_mem_dealloc runtime=26609
 Time per iteration:
@@ -478,18 +472,15 @@ Time per iteration (^ denotes deallocations):
 ---- test10 ----
 Using DWT for timing
 
-Total failed allocs = 0 
-Total failed deallocs = 6 
-Could not assess due to failed iterations
-!!! HardFault !!!
-HFSR: 0x40000000
-CFSR: 0x00008200
-BFAR: 0x20018000
+Total runtime=51314
+Time per iteration (^ denotes deallocations):
+454, 299^, 442, 433, 433, 423, 287^, 439, 433, 433, 423, 226^, 257, 433, 433, 423, 287^, 439, 433, 433, 423, 222^, 257, 433, 433, 423, 222^, 457, 449, 471, 461, 222^, 510, 510, 251, 461, 238^, 453, 487, 510, 500, 322^, 510, 510, 510, 500, 236^, 271, 510, 510, 261, 236^, 510, 487, 510, 500, 236^, 487, 549, 251, 500, 238^, 453, 549, 249, 500, 222^, 453, 449, 549, 539, 310^, 555, 449, 249, 500, 222^, 549, 271, 251, 461, 222^, 510, 451, 449, 500, 222^, 271, 510, 251, 461, 222^, 510, 510, 510, 500, 254^, 549, 271, 510, 500, 236^, 292, 271, 471, 461, 236^, 510, 487, 510, 500, 220^, 549, 549, 549, 241, 224^, 553, 549, 549, 539, 254^, 526, 588, 587, 
+
 <serial timeout>
 <end of test>
 
 ```
-### your score: 0.00/1.00
+### your score: 1.00/1.00
 
 
 
