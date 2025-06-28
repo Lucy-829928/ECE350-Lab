@@ -109,6 +109,7 @@ void* k_mem_alloc(size_t size) {
 	    // remove from free list
 	    remove_from_free_list(first_fit);
 	    first_fit->is_allocated = 1;
+        first_fit->PID = osGetTID();
 
 	    if (first_fit->size <= size + 2 * metadata_size) {
 	        return (void*)((U8*)first_fit + metadata_size);
@@ -135,7 +136,6 @@ void* k_mem_alloc(size_t size) {
 	        }
 	        first_fit->next = new_header;
 
-	        first_fit->PID = osGetTID();
 
 	        // add new free block to free list
 	        new_header->next_free = NULL;
