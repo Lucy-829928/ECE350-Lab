@@ -84,7 +84,7 @@ int k_mem_init() {
 
 void* k_mem_alloc(size_t size) {
 //	printf("Trying to allocate mem\r\n");
-	printf("alloc Request size=%lu, metadata_size=%lu\r\n", size, metadata_size);
+	//printf("alloc Request size=%lu, metadata_size=%lu\r\n", size, metadata_size);
 	    if (!is_initialized || size == 0) {
 	        return NULL;
 	    }
