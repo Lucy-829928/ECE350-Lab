@@ -51,19 +51,14 @@ PASS: last block is 27544 bytes
 ```
 ---- test1 ----
 alloc Request size=933, metadata_size=28
-ALLOCATED address with location of metadata 20008798 
 k_mem_alloc 933 bytes, ptr=0x200087b4
 alloc Request size=743, metadata_size=28
-ALLOCATED address with location of metadata 20008b5c 
 k_mem_alloc 743 bytes, ptr=0x20008b78
 alloc Request size=262, metadata_size=28
-ALLOCATED address with location of metadata 20008e60 
 k_mem_alloc 262 bytes, ptr=0x20008e7c
 alloc Request size=529, metadata_size=28
-ALLOCATED address with location of metadata 20008f84 
 k_mem_alloc 529 bytes, ptr=0x20008fa0
 alloc Request size=700, metadata_size=28
-ALLOCATED address with location of metadata 200091b4 
 k_mem_alloc 700 bytes, ptr=0x200091d0
 Validating buffer contents... 
 PASS: no corrupted buffers 
@@ -1241,6 +1236,14 @@ alloc Request size=95332, metadata_size=28
 alloc Request size=95328, metadata_size=28
 alloc Request size=95324, metadata_size=28
 alloc Request size=95320, metadata_size=28
+alloc Request size=95316, metadata_size=28
+alloc Request size=95312, metadata_size=28
+alloc Request size=95308, metadata_size=28
+alloc Request size=95304, metadata_size=28
+alloc Request size=95300, metadata_size=28
+alloc Request size=95296, metadata_size=28
+alloc Request size=95292, metadata_size=28
+alloc Request size=95288, metadata_size=28
 <end of test>
 
 ```
@@ -1264,15 +1267,7 @@ PASS: freed memory was used again
 ```
 ### your output
 ```
-94200, metadata_size=28
-alloc Request size=94196, metadata_size=28
-alloc Request size=94192, metadata_size=28
-alloc Request size=94188, metadata_size=28
-alloc Request size=94184, metadata_size=28
-alloc Request size=94180, metadata_size=28
-alloc Request size=94176, metadata_size=28
-alloc Request size=94172, metadata_size=28
-alloc Request size=94168, metadata_size=28
+e=94168, metadata_size=28
 alloc Request size=94164, metadata_size=28
 alloc Request size=94160, metadata_size=28
 alloc Request size=94156, metadata_size=28
@@ -1304,18 +1299,21 @@ alloc Request size=94056, metadata_size=28
 alloc Request size=94052, metadata_size=28
 alloc Request size=94048, metadata_size=28
 alloc Request size=94044, metadata_size=28
-alloc Request size=94040, m---- test2 ----
+alloc Request size=94040, metadata_size=28
+alloc Request size=94036, metadata_size=28
+alloc Request size=94032, metadata_size=28
+alloc Request size=94028, metadata_size=28
+alloc Request size=94024, metadata_size=28
+alloc Request size=94020, metadata_size=28
+alloc Request size=94016, metadata_siz---- test2 ----
 allocating 4 bytes...
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008378 
 allocating large block...
 alloc Request size=1000, metadata_size=28
-ALLOCATED address with location of metadata 20008398 
 deallocating the first block...
 PASS: k_mem_dealloc returned OK
 allocating 4 bytes again... should fit into the first spot
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 2000879c 
 FAIL: k_mem_alloc returned unexpected pointer 0x200087b8
 
 <serial timeout>
@@ -1362,61 +1360,46 @@ PASS: k_mem_dealloc coalesced with two free blocks
 ```
 ---- test3 ----
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200083b0 
 block 0 allocated, ptr=0x200083cc
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200083d0 
 block 1 allocated, ptr=0x200083ec
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200083f0 
 block 2 allocated, ptr=0x2000840c
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008410 
 block 3 allocated, ptr=0x2000842c
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008430 
 block 4 allocated, ptr=0x2000844c
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008450 
 block 5 allocated, ptr=0x2000846c
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008470 
 block 6 allocated, ptr=0x2000848c
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008490 
 block 7 allocated, ptr=0x200084ac
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200084b0 
 block 8 allocated, ptr=0x200084cc
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200084d0 
 block 9 allocated, ptr=0x200084ec
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200084f0 
 block 10 allocated, ptr=0x2000850c
 deallocating 0x200083cc
 deallocating 0x2000840c
 deallocating 0x2000846c
 deallocating 0x200084ec
 alloc Request size=8, metadata_size=28
-ALLOCATED address with location of metadata 20008510 
 block 11 allocated, ptr=0x2000852c
 deallocating 0x2000844c, which is before a free block
 testing if 8 bytes can fit at 0x2000844c 
 alloc Request size=8, metadata_size=28
-ALLOCATED address with location of metadata 20008534 
 k_mem_alloc returned unexpected pointer 0x20008550
 FAIL: k_mem_dealloc did not coalesce with a free block after it
 deallocating 0x2000848c, which is after a free block
 testing if 12 bytes can fit at 0x2000844c 
 alloc Request size=12, metadata_size=28
-ALLOCATED address with location of metadata 20008558 
 k_mem_alloc returned unexpected pointer 0x20008574
 FAIL: k_mem_dealloc did not coalesce with a free block before it
 deallocating 0x200083ec, which is between two free blocks
 testing if 12 bytes can fit at 0x200083cc 
 alloc Request size=12, metadata_size=28
-ALLOCATED address with location of metadata 20008580 
 k_mem_alloc returned unexpected pointer 0x2000859c
 FAIL: k_mem_dealloc did not coalesce with two free blocks
 <serial timeout>
@@ -1441,15 +1424,10 @@ PASS: sliver of memory was not lost
 ```
 ---- test4 ----
 alloc Request size=16, metadata_size=28
-ALLOCATED address with location of metadata 20008390 
 alloc Request size=16, metadata_size=28
-ALLOCATED address with location of metadata 200083bc 
 alloc Request size=16, metadata_size=28
-ALLOCATED address with location of metadata 200083e8 
 alloc Request size=16, metadata_size=28
-ALLOCATED address with location of metadata 20008414 
 alloc Request size=12, metadata_size=28
-ALLOCATED address with location of metadata 20008440 
 k_mem_alloc does not use First-Fit algorithm, test aborted
 !!! HardFault !!!
 HFSR: 0x40000000
@@ -1475,11 +1453,8 @@ PASS: allocated block for k_mem_alloc(5) is 24 bytes and allocated block for k_m
 ```
 ---- test5 ----
 alloc Request size=5, metadata_size=28
-ALLOCATED address with location of metadata 20008378 
 alloc Request size=8, metadata_size=28
-ALLOCATED address with location of metadata 2000839c 
 alloc Request size=8, metadata_size=28
-ALLOCATED address with location of metadata 200083c0 
 PASS: allocated block for k_mem_alloc(5) is 36 bytes and allocated block for k_mem_alloc(8) is 36 bytes (should be the same)
 <serial timeout>
 <end of test>
@@ -1508,11 +1483,9 @@ PASS: k_mem_dealloc returned error on second call (expected)
 ---- test6 ----
 allocating one block, then try to deallocate a pointer outside of this block...
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008378 
 PASS: k_mem_dealloc returned error (expected)
 allocating large block...
 alloc Request size=1000, metadata_size=28
-ALLOCATED address with location of metadata 20008398 
 deallocating a pointer part way in the large block
 PASS: k_mem_dealloc returned error (expected)
 try to deallocate a valid pointer twice...
@@ -1541,12 +1514,10 @@ PASS: k_mem_dealloc returned error (expected)
 ```
 allocating from first task
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008380 
 deallocating from first task
 PASS: k_mem_dealloc successful
 allocating again from first task
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200083a0 
 deallocating from second task
 PASS: k_mem_dealloc returned error (expected)
 <serial timeout>
@@ -2802,7 +2773,7 @@ Time per iteration:
 ```
 ### your output
 ```
-120, metadata_size=28
+4120, metadata_size=28
 alloc Request size=94116, metadata_size=28
 alloc Request size=94112, metadata_size=28
 alloc Request size=94108, metadata_size=28
@@ -2834,225 +2805,116 @@ alloc Request size=94008, metadata_size=28
 alloc Request size=94004, metadata_size=28
 alloc Request size=94000, metadata_size=28
 alloc Request size=93996, metadata_size=28
-alloc Request size=93992, metadata_size=28
-alloc Request size=93988, metadata_size=28
-alloc Request size=93984, metadata_size=28
-alloc Request size=93980, metadata_size=28
-alloc Request size=93976, metadata_size=28
-alloc Request size=93972, metadata_size=28
-alloc Request size=93968, metadata_size=28
-alloc Request size=93964, metadata_size=28
-alloc Request size=93960, metadata_size=28
-alloc Request size=93956---- test9 ----
+alloc Request size=939---- test9 ----
 Using DWT for timing
 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008378 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008398 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200083b8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200083d8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200083f8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008418 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008438 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008458 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008478 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008498 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200084b8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200084d8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200084f8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008518 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008538 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008558 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008578 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008598 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200085b8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200085d8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200085f8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008618 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008638 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008658 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008678 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008698 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200086b8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200086d8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200086f8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008718 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008738 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008758 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008778 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008798 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200087b8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200087d8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200087f8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008818 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008838 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008858 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008878 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008898 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200088b8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200088d8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200088f8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008918 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008938 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008958 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008978 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008998 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200089b8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200089d8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 200089f8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008a18 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008a38 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008a58 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008a78 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008a98 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008ab8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008ad8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008af8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008b18 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008b38 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008b58 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008b78 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008b98 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008bb8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008bd8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008bf8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008c18 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008c38 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008c58 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008c78 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008c98 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008cb8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008cd8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008cf8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008d18 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008d38 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008d58 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008d78 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008d98 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008db8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008dd8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008df8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008e18 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008e38 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008e58 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008e78 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008e98 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008eb8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008ed8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008ef8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008f18 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008f38 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008f58 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008f78 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008f98 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008fb8 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 20008fd8 
-k_mem_alloc runtime=76804056
+k_mem_alloc runtime=32396347
 Time per iteration:
-768103, 768042, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768040, 768036, 768042, 768040, 768042, 768040, 768040, 768042, 768032, 768040, 768042, 768042, 768044, 768045, 768041, 768038, 768028, 768035, 
+324308, 323984, 323956, 323959, 323958, 323953, 323954, 323960, 323958, 323984, 323956, 323956, 323954, 323954, 323960, 323954, 323982, 323956, 323954, 323954, 323980, 323956, 323952, 323950, 323982, 323954, 323952, 323954, 323960, 323954, 323982, 323956, 323954, 323954, 323980, 323956, 323952, 323950, 323982, 323954, 323952, 323954, 323960, 323954, 323982, 323956, 323954, 323954, 323980, 323956, 323952, 323950, 323982, 323954, 323952, 323954, 323960, 323954, 323982, 323956, 323954, 323954, 323980, 323956, 323952, 323950, 323982, 323954, 323952, 323954, 323960, 323954, 323982, 323956, 323954, 323954, 323980, 323956, 323952, 323950, 323982, 323954, 323952, 323954, 323960, 323954, 323982, 323956, 323954, 323954, 323980, 323956, 323952, 323950, 323982, 323954, 323952, 323954, 323960, 323953, 
 
-k_mem_dealloc runtime=155214
+k_mem_dealloc runtime=155217
 Time per iteration:
-2956, 2909, 2881, 2853, 2825, 2797, 2769, 2741, 2713, 2685, 2657, 2629, 2601, 2573, 2545, 2517, 2489, 2461, 2433, 2405, 2377, 2349, 2377, 2293, 2265, 2237, 2209, 2181, 2153, 2125, 2097, 2069, 2041, 2013, 1985, 1957, 1929, 1901, 1873, 1845, 1817, 1789, 1761, 1733, 1705, 1677, 1649, 1621, 1593, 1565, 1537, 1509, 1481, 1453, 1425, 1397, 1369, 1341, 1313, 1285, 1257, 1229, 1201, 1173, 1145, 1117, 1089, 1061, 1033, 1005, 977, 949, 921, 893, 865, 837, 860, 781, 753, 725, 697, 669, 641, 613, 585, 557, 529, 501, 473, 445, 417, 389, 361, 333, 305, 277, 249, 221, 193, 153, 
+2956, 2909, 2881, 2853, 2825, 2797, 2769, 2741, 2713, 2685, 2657, 2687, 2601, 2573, 2545, 2517, 2489, 2461, 2433, 2405, 2377, 2349, 2321, 2293, 2265, 2237, 2209, 2181, 2153, 2125, 2097, 2069, 2041, 2013, 1985, 1957, 1929, 1901, 1873, 1845, 1817, 1789, 1761, 1733, 1705, 1677, 1649, 1621, 1593, 1565, 1537, 1561, 1481, 1453, 1425, 1397, 1369, 1341, 1313, 1285, 1257, 1229, 1201, 1173, 1145, 1117, 1089, 1061, 1033, 1005, 977, 949, 921, 893, 865, 837, 809, 781, 753, 725, 697, 669, 641, 613, 585, 557, 529, 501, 473, 445, 417, 389, 361, 333, 305, 277, 249, 221, 193, 153, 
 
 <serial timeout>
 <end of test>
@@ -3081,205 +2943,105 @@ Time per iteration (^ denotes deallocations):
 Using DWT for timing
 
 alloc Request size=36, metadata_size=28
-ALLOCATED address with location of metadata 20008a98 
 alloc Request size=33, metadata_size=28
-ALLOCATED address with location of metadata 20008ad8 
 alloc Request size=9, metadata_size=28
-ALLOCATED address with location of metadata 20008b18 
 alloc Request size=186, metadata_size=28
-ALLOCATED address with location of metadata 20008b40 
 alloc Request size=43, metadata_size=28
-ALLOCATED address with location of metadata 20008c18 
 alloc Request size=115, metadata_size=28
-ALLOCATED address with location of metadata 20008c60 
 alloc Request size=50, metadata_size=28
-ALLOCATED address with location of metadata 20008cf0 
 alloc Request size=123, metadata_size=28
-ALLOCATED address with location of metadata 20008d40 
 alloc Request size=156, metadata_size=28
-ALLOCATED address with location of metadata 20008dd8 
 alloc Request size=172, metadata_size=28
-ALLOCATED address with location of metadata 20008e90 
 alloc Request size=35, metadata_size=28
-ALLOCATED address with location of metadata 20008f58 
 alloc Request size=96, metadata_size=28
-ALLOCATED address with location of metadata 20008f98 
 alloc Request size=138, metadata_size=28
-ALLOCATED address with location of metadata 20009014 
 alloc Request size=160, metadata_size=28
-ALLOCATED address with location of metadata 200090bc 
 alloc Request size=176, metadata_size=28
-ALLOCATED address with location of metadata 20009178 
 alloc Request size=56, metadata_size=28
-ALLOCATED address with location of metadata 20009244 
 alloc Request size=179, metadata_size=28
-ALLOCATED address with location of metadata 20009298 
 alloc Request size=147, metadata_size=28
-ALLOCATED address with location of metadata 20009368 
 alloc Request size=171, metadata_size=28
-ALLOCATED address with location of metadata 20009418 
 alloc Request size=100, metadata_size=28
-ALLOCATED address with location of metadata 200094e0 
 alloc Request size=196, metadata_size=28
-ALLOCATED address with location of metadata 20009560 
 alloc Request size=15, metadata_size=28
-ALLOCATED address with location of metadata 20009640 
 alloc Request size=4, metadata_size=28
-ALLOCATED address with location of metadata 2000966c 
 alloc Request size=118, metadata_size=28
-ALLOCATED address with location of metadata 2000968c 
 alloc Request size=169, metadata_size=28
-ALLOCATED address with location of metadata 20009720 
 alloc Request size=159, metadata_size=28
-ALLOCATED address with location of metadata 200097e8 
 alloc Request size=187, metadata_size=28
-ALLOCATED address with location of metadata 200098a4 
 alloc Request size=95, metadata_size=28
-ALLOCATED address with location of metadata 2000997c 
 alloc Request size=92, metadata_size=28
-ALLOCATED address with location of metadata 200099f8 
 alloc Request size=31, metadata_size=28
-ALLOCATED address with location of metadata 20009a70 
 alloc Request size=67, metadata_size=28
-ALLOCATED address with location of metadata 20009aac 
 alloc Request size=135, metadata_size=28
-ALLOCATED address with location of metadata 20009b0c 
 alloc Request size=94, metadata_size=28
-ALLOCATED address with location of metadata 20009bb0 
 alloc Request size=170, metadata_size=28
-ALLOCATED address with location of metadata 20009c2c 
 alloc Request size=140, metadata_size=28
-ALLOCATED address with location of metadata 20009cf4 
 alloc Request size=102, metadata_size=28
-ALLOCATED address with location of metadata 20009d9c 
 alloc Request size=191, metadata_size=28
-ALLOCATED address with location of metadata 20009e20 
 alloc Request size=133, metadata_size=28
-ALLOCATED address with location of metadata 20009efc 
 alloc Request size=104, metadata_size=28
-ALLOCATED address with location of metadata 20009fa0 
 alloc Request size=142, metadata_size=28
-ALLOCATED address with location of metadata 2000a024 
 alloc Request size=51, metadata_size=28
-ALLOCATED address with location of metadata 2000a0d0 
 alloc Request size=131, metadata_size=28
-ALLOCATED address with location of metadata 2000a120 
 alloc Request size=55, metadata_size=28
-ALLOCATED address with location of metadata 2000a1c0 
 alloc Request size=28, metadata_size=28
-ALLOCATED address with location of metadata 2000a214 
 alloc Request size=185, metadata_size=28
-ALLOCATED address with location of metadata 2000a24c 
 alloc Request size=80, metadata_size=28
-ALLOCATED address with location of metadata 2000a324 
 alloc Request size=77, metadata_size=28
-ALLOCATED address with location of metadata 2000a390 
 alloc Request size=1, metadata_size=28
-ALLOCATED address with location of metadata 2000a3fc 
 alloc Request size=97, metadata_size=28
-ALLOCATED address with location of metadata 2000a41c 
 alloc Request size=2, metadata_size=28
-ALLOCATED address with location of metadata 2000a49c 
 alloc Request size=127, metadata_size=28
-ALLOCATED address with location of metadata 2000a4bc 
 alloc Request size=5, metadata_size=28
-ALLOCATED address with location of metadata 2000a558 
 alloc Request size=154, metadata_size=28
-ALLOCATED address with location of metadata 2000a57c 
 alloc Request size=69, metadata_size=28
-ALLOCATED address with location of metadata 2000a634 
 alloc Request size=34, metadata_size=28
-ALLOCATED address with location of metadata 2000a698 
 alloc Request size=110, metadata_size=28
-ALLOCATED address with location of metadata 2000a6d8 
 alloc Request size=145, metadata_size=28
-ALLOCATED address with location of metadata 2000a764 
 alloc Request size=198, metadata_size=28
-ALLOCATED address with location of metadata 2000a814 
 alloc Request size=93, metadata_size=28
-ALLOCATED address with location of metadata 2000a8f8 
 alloc Request size=42, metadata_size=28
-ALLOCATED address with location of metadata 2000a974 
 alloc Request size=98, metadata_size=28
-ALLOCATED address with location of metadata 2000a9bc 
 alloc Request size=148, metadata_size=28
-ALLOCATED address with location of metadata 2000aa3c 
 alloc Request size=75, metadata_size=28
-ALLOCATED address with location of metadata 2000aaec 
 alloc Request size=8, metadata_size=28
-ALLOCATED address with location of metadata 2000ab54 
 alloc Request size=89, metadata_size=28
-ALLOCATED address with location of metadata 2000ab78 
 alloc Request size=188, metadata_size=28
-ALLOCATED address with location of metadata 2000abf0 
 alloc Request size=3, metadata_size=28
-ALLOCATED address with location of metadata 2000acc8 
 alloc Request size=16, metadata_size=28
-ALLOCATED address with location of metadata 2000ace8 
 alloc Request size=184, metadata_size=28
-ALLOCATED address with location of metadata 2000ad14 
 alloc Request size=73, metadata_size=28
-ALLOCATED address with location of metadata 2000ade8 
 alloc Request size=49, metadata_size=28
-ALLOCATED address with location of metadata 2000ae50 
 alloc Request size=32, metadata_size=28
-ALLOCATED address with location of metadata 2000aea0 
 alloc Request size=39, metadata_size=28
-ALLOCATED address with location of metadata 2000aedc 
 alloc Request size=122, metadata_size=28
-ALLOCATED address with location of metadata 2000af20 
 alloc Request size=174, metadata_size=28
-ALLOCATED address with location of metadata 2000afb8 
 alloc Request size=101, metadata_size=28
-ALLOCATED address with location of metadata 2000b084 
 alloc Request size=63, metadata_size=28
-ALLOCATED address with location of metadata 2000b108 
 alloc Request size=125, metadata_size=28
-ALLOCATED address with location of metadata 2000b164 
 alloc Request size=12, metadata_size=28
-ALLOCATED address with location of metadata 2000b200 
 alloc Request size=152, metadata_size=28
-ALLOCATED address with location of metadata 2000b228 
 alloc Request size=130, metadata_size=28
-ALLOCATED address with location of metadata 2000b2dc 
 alloc Request size=120, metadata_size=28
-ALLOCATED address with location of metadata 2000b37c 
 alloc Request size=10, metadata_size=28
-ALLOCATED address with location of metadata 2000b410 
 alloc Request size=149, metadata_size=28
-ALLOCATED address with location of metadata 2000b438 
 alloc Request size=199, metadata_size=28
-ALLOCATED address with location of metadata 2000b4ec 
 alloc Request size=166, metadata_size=28
-ALLOCATED address with location of metadata 2000b5d0 
 alloc Request size=82, metadata_size=28
-ALLOCATED address with location of metadata 2000b694 
 alloc Request size=189, metadata_size=28
-ALLOCATED address with location of metadata 2000b704 
 alloc Request size=105, metadata_size=28
-ALLOCATED address with location of metadata 2000b7e0 
 alloc Request size=65, metadata_size=28
-ALLOCATED address with location of metadata 2000b868 
 alloc Request size=178, metadata_size=28
-ALLOCATED address with location of metadata 2000b8c8 
 alloc Request size=60, metadata_size=28
-ALLOCATED address with location of metadata 2000b998 
 alloc Request size=21, metadata_size=28
-ALLOCATED address with location of metadata 2000b9f0 
 alloc Request size=54, metadata_size=28
-ALLOCATED address with location of metadata 2000ba24 
 alloc Request size=90, metadata_size=28
-ALLOCATED address with location of metadata 2000ba78 
 alloc Request size=46, metadata_size=28
-ALLOCATED address with location of metadata 2000baf0 
 alloc Request size=194, metadata_size=28
-ALLOCATED address with location of metadata 2000bb3c 
 alloc Request size=153, metadata_size=28
-ALLOCATED address with location of metadata 2000bc1c 
 alloc Request size=195, metadata_size=28
-ALLOCATED address with location of metadata 2000bcd4 
 alloc Request size=58, metadata_size=28
-ALLOCATED address with location of metadata 2000bdb4 
 Total failed allocs = 0 
 Total failed deallocs = 24 
 Could not assess due to failed iterations
