@@ -335,15 +335,27 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-  if (os_running && !os_fallback_idle) {
+  if (os_running) {
     for (int i = 1; i < MAX_TASKS; i++) {
         if (tcb_list[i].state == SLEEPING) {
             if (tcb_list[i].deadline_remaining > 0) {
                 tcb_list[i].deadline_remaining--; // Decrement deadline
             }
             // @z222ye: for sleeping tasks, they also need reductions on sleep_remaining time
+            if (tcb_list[i].sleep_remaining > 0) {
+                tcb_list[i].sleep_remaining--; // Decrement sleep time
+            }
             if (tcb_list[i].deadline_remaining <= 0) {
-                tcb_list[i].state = READY; // Wake up the task
+              // this is not allowed in EDF algorithm so we throw an error
+              printf("Error: Task %d has reached its deadline while sleeping!\r\n", tcb_list[i].tid);
+            }
+            if (tcb_list[i].sleep_remaining <= 0) {
+                // Wake up the task
+                tcb_list[i].state = READY;
+                // @z222ye: but i initialized default sleep_remaining with maximum value? nvm...
+                tcb_list[i].sleep_remaining = 0; // Reset sleep time
+                tcb_list[i].deadline_remaining 
+                    = tcb_list[i].initial_deadline; // Reset deadline for the sleep task
             }
         }
         if (tcb_list[i].state == RUNNING || tcb_list[i].state == READY) {
@@ -355,10 +367,12 @@ void SysTick_Handler(void)
                 // @z222ye: may be we can handler this case in a better way
             }
         }
-        SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
-        __DSB(); // Ensure the PendSV is set before returning
-        __ISB(); // Ensure the instruction is complete before returning
     }
+    // @z222ye: maybe we can one more logic: if all tasks died we have to run idle task,
+      // then we dont have to execute following lines anymore
+    SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
+    __DSB(); // Ensure the PendSV is set before returning
+    __ISB(); // Ensure the instruction is complete before returning
   }
   /* USER CODE END SysTick_IRQn 1 */
 }

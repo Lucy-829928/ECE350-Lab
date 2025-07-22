@@ -4,6 +4,10 @@
 .global PendSV_Handler  // Make the symbol visible to the linker
 .type PendSV_Handler, %function // Specify it's a function
 
+// same as macros from k_task.h
+.equ TCB_STRUCT_SIZE, 32    // Size of TCB struct (9 fields × 4 bytes each)
+.equ SP_OFFSET, 16         // Offset of sp field in TCB struct
+
 PendSV_Handler:
     // 1. Disable interrupts
     // @z222ye: I choose to disable timer interrupt
@@ -21,17 +25,9 @@ PendSV_Handler:
     LDR R1, =g_current_task_idx
     LDR R2, [R1]
     LDR R3, =tcb_list
-    // Assuming TCB_STRUCT_SIZE and OFFSET_SP_IMM are defined elsewhere
-    // or you use .equ directives here if they are constants.
-    // For simplicity, let's assume they are accessible or you hardcode for now.
-    // You might need to pass these as arguments or load them if they are dynamic.
-    // For now, let's use symbolic constants that your assembler would resolve
-    // or that you define with .equ
-    // .equ TCB_STRUCT_SIZE_ASM, 20 // Example, ensure this matches your C define
-    // .equ OFFSET_SP_IMM_ASM, 16   // Example, ensure this matches your C define
-    MOV R4, #24 // Use your actual immediate value or .equ
+    MOV R4, #TCB_STRUCT_SIZE    // Replace hardcoded #24
     MLA R2, R2, R4, R3
-    STR R0, [R2, #16] // Use your actual immediate value or .equ
+    STR R0, [R2, #SP_OFFSET]    // Replace hardcoded #16
 
     // 4. Call scheduler
     PUSH {LR}           // Save EXC_RETURN
@@ -45,7 +41,7 @@ PendSV_Handler:
     LDR R3, =tcb_list
     // R4 still has TCB_STRUCT_SIZE
     MLA R2, R2, R4, R3
-    LDR R0, [R2, #16] // Use your actual immediate value or .equ
+    LDR R0, [R2, #SP_OFFSET] // Use your actual immediate value or .equ
 
     // 6. Restore R4-R11
     LDMIA R0!, {R4-R11}

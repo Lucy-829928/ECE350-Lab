@@ -38,7 +38,10 @@ void osKernelInit() {
         tcb_list[tcb_id].stack_size = INVALID_STACKPTR;
         tcb_list[tcb_id].ptask = NULL;
         tcb_list[tcb_id].sp = INVALID_STACKPTR; // Initialize stack pointer to NULL
-        tcb_list[tcb_id].deadline_remaining = 0xFFFFFFFF; // Initialize deadline to 0
+        tcb_list[tcb_id].initial_deadline = 0xFFFFFFFF; // Default initial deadline for each task
+        tcb_list[tcb_id].deadline_remaining 
+            = tcb_list[tcb_id].initial_deadline;
+        tcb_list[tcb_id].sleep_remaining = 0xFFFFFFFF; // Initialize sleep time to infx
     }
 }
 
@@ -61,7 +64,7 @@ int osCreateTask(TCB* task) {
     if (task->stack_size == 0) {
         task->stack_size = STACK_SIZE;
     }
-    task->deadline_remaining = 5; // Default deadline: 5ms
+    task->initial_deadline = task->deadline_remaining = 5; // Default deadline: 5ms
     // now we determine if the target has a stack high. If so, reuse it. If not so, do not reuse it.
     // prioritizes reuse (if a dormant exists we reuse the dormant instead of allocating a new one)
     if (tcb_list[next_available_space].stack_high == INVALID_STACKPTR) {
@@ -69,7 +72,9 @@ int osCreateTask(TCB* task) {
 		// FIX @ z222ye: stack high and ptr is messing up with each other
         tcb_list[next_available_space].stack_high = current_stack_top;
         tcb_list[next_available_space].stack_size = task->stack_size;
-        tcb_list[next_available_space].deadline_remaining = task->deadline_remaining;
+        tcb_list[next_available_space].deadline_remaining
+            = tcb_list[next_available_space].initial_deadline
+            = task->initial_deadline;
     } else {
         // handle extreme situations
         if (task->stack_size > tcb_list[next_available_space].stack_size) {
@@ -79,7 +84,9 @@ int osCreateTask(TCB* task) {
                 if (tcb_list[i].state == DORMANT && tcb_list[i].stack_size >= task->stack_size) {
                     next_available_space = i;
                     refind_success = 1;
-                    tcb_list[next_available_space].deadline_remaining = task->deadline_remaining;
+                    tcb_list[next_available_space].deadline_remaining
+                        = tcb_list[next_available_space].initial_deadline
+                        = task->initial_deadline;
                     break;
                 }
             }
@@ -136,7 +143,6 @@ void create_idle_task() {
     tcb_list[0].state = READY;
     tcb_list[0].stack_high = zeroth_stack_top;
     tcb_list[0].stack_size = STACK_SIZE;
-    tcb_list[0].deadline_remaining = 0xFFFFFFFF; // @z222ye: not sure if this is the best value
     U32* stackptr = (U32*)tcb_list[0].stack_high;
     *(--stackptr) = 0x01000000;
     *(--stackptr) = (U32)(tcb_list[0].ptask);  // PC: when SVC is exited, run print_continuously
@@ -161,8 +167,7 @@ int osKernelStart() {
     int first_task_idx = -1;
     U32 min_deadline = 0xFFFFFFFF;  // Initialize with maximum possible value
     
-    // Find the first task in READY state
-    // A more sophisticated scheduler might pick based on priority
+    // Find the earliest task in READY state
     for (int i = 1; i < MAX_TASKS; ++i) {
         if (tcb_list[i].state == READY) {
             if (tcb_list[i].deadline_remaining < min_deadline) {
@@ -196,7 +201,6 @@ int osKernelStart() {
 }
 
 void scheduler(void) {
-    // @z222ye: sleep logic hasnt been implemented so we only imple basic EDF scheduler
     int prev_task_idx = g_current_task_idx;
     if (prev_task_idx != -1 && tcb_list[prev_task_idx].state == RUNNING) {
         tcb_list[prev_task_idx].state = READY; // Mark current task as ready (if it wasn't blocked/terminated)
@@ -226,18 +230,22 @@ void scheduler(void) {
     // If no task is ready, fall back to idle task
     g_current_task_idx = 0;  // Idle task index
     tcb_list[g_current_task_idx].state = RUNNING;
-    // @z222ye: maybe we can disable timer interrupt since here ... ?
-    if (!os_fallback_idle) {
-        os_fallback_idle = 1; // Set flag to indicate we entered the fallback idle task
-        // printf("Entering fallback idle task. \r\n");
-    } else {
-        // we should never reach here so throw an error
-        printf("Error: Already in fallback idle task and timed scheduler should not be called again.\r\n");
-    }
 }
 
 void osYield() {
+    tcb_list[g_current_task_idx].deadline_remaining 
+        = tcb_list[g_current_task_idx].initial_deadline; // Reset deadline for the yield task
     __asm volatile("SVC #2");
+}
+
+void osSleep(int timeInMs) {
+    if (timeInMs <= 0 || g_current_task_idx == 0) {
+        // @z222ye: although i dont think idle task will enter this case
+        return; // Invalid sleep time or no valid task
+    }
+    tcb_list[g_current_task_idx].state = SLEEPING;
+    tcb_list[g_current_task_idx].sleep_remaining = timeInMs;
+    __asm volatile("SVC #2"); // Trigger PendSV to switch context
 }
 
 int osTaskInfo(task_t TID, TCB* task_copy) {
@@ -250,7 +258,9 @@ int osTaskInfo(task_t TID, TCB* task_copy) {
     task_copy->stack_size = tcb_list[TID].stack_size;
     task_copy->state = tcb_list[TID].state;
     task_copy->tid = tcb_list[TID].tid;
+    task_copy->initial_deadline = tcb_list[TID].initial_deadline; // Copy the initial deadline
     task_copy->deadline_remaining = tcb_list[TID].deadline_remaining; // Copy the deadline
+    task_copy->sleep_remaining = tcb_list[TID].sleep_remaining; // Copy the sleep time
     return RTX_OK;
 }
 
@@ -264,6 +274,8 @@ int printTCB(task_t TID) {
     printf("|== TCB state 0 dormant 1 ready 2 running: [%d] ==| \r\n", test_tcb.state);
     printf("|== TCB stack size [%d] ==| \r\n", test_tcb.stack_size);
     printf("|== TCB deadline_remaining [%d] ==| \r\n", test_tcb.deadline_remaining);
+    printf("|== TCB initial_deadline [%d] ==| \r\n", test_tcb.initial_deadline);
+    printf("|== TCB sleep_remaining [%d] ==| \r\n", test_tcb.sleep_remaining);
     printf("--- TCB printout completed ---\r\n");
     return 0;
 }

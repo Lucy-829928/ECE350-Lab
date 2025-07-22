@@ -10,7 +10,8 @@
 #ifndef INC_K_TASK_H_
 #define INC_K_TASK_H_
 
-#define TCB_STRUCT_SIZE 20
+#define TCB_STRUCT_SIZE 32  // Update this value to match sizeof(TCB)
+#define SP_OFFSET 16       // Update this value to match offsetof(TCB, sp)
 
 // Type definitions
 typedef unsigned int   U32;
@@ -27,6 +28,7 @@ typedef struct task_control_block {
     U16 stack_size;            // Stack size. Must be a multiple of 8
     U32* sp;                   // Current stack pointer for this task
     // @z222ye: maybe it should be a signed int since what if deadline is negative?
+    U32 initial_deadline;       // Initial deadline for the task
     U32 deadline_remaining;     // Deadline for the task
     U32 sleep_remaining;        // Remaining sleep time for the task
 } TCB;
@@ -43,6 +45,7 @@ int  osKernelStart();
 void osTaskExitHandler(void);
 void create_idle_task();
 task_t osGetTID();
+void osSleep(int timeInMs);
 
 // Externs
 extern int g_current_task_idx;
