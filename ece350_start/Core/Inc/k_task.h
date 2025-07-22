@@ -45,7 +45,6 @@ task_t osGetTID();
 
 // Externs
 extern int g_current_task_idx;
-extern U32 g_current_task_ddl;
 extern TCB tcb_list[];
 extern U32 g_main_return_lr;
 extern U32 os_running;
