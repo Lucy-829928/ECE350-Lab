@@ -335,12 +335,13 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-  if (os_running) {
+  if (os_running && !os_fallback_idle) {
     for (int i = 1; i < MAX_TASKS; i++) {
         if (tcb_list[i].state == SLEEPING) {
             if (tcb_list[i].deadline > 0) {
                 tcb_list[i].deadline--; // Decrement deadline
             }
+            // @z222ye: for sleeping tasks, they also need reductions on sleep_remaining time
             if (tcb_list[i].deadline <= 0) {
                 tcb_list[i].state = READY; // Wake up the task
             }

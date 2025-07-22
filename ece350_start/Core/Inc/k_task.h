@@ -47,6 +47,7 @@ task_t osGetTID();
 extern int g_current_task_idx;
 extern TCB tcb_list[];
 extern U32 g_main_return_lr;
-extern U32 os_running;
+extern U8 os_running;
+extern U8 os_fallback_idle;
 
 #endif /* INC_K_TASK_H_ */

@@ -8,7 +8,8 @@
 TCB tcb_list[MAX_TASKS];
 
 // stack addresses global
-U32 os_running = 0;
+U8 os_running = 0;
+U8 os_fallback_idle = 0; // Flag to indicate if we entered the fallback idle task
 int g_current_task_idx; // <<< DEFINITION HERE
 U32 g_main_return_lr;
 
@@ -175,6 +176,7 @@ int osKernelStart() {
         // No task to run, kernel cannot start.
         // This is an error, or could enter an idle loop. solution : set it to 0 to run idle task.
         first_task_idx = 0; // Or handle error appropriately
+        os_fallback_idle = 1;
     }
     g_current_task_idx = first_task_idx;
     tcb_list[first_task_idx].state = RUNNING;
@@ -225,6 +227,13 @@ void scheduler(void) {
     g_current_task_idx = 0;  // Idle task index
     tcb_list[g_current_task_idx].state = RUNNING;
     // @z222ye: maybe we can disable timer interrupt since here ... ?
+    if (!os_fallback_idle) {
+        os_fallback_idle = 1; // Set flag to indicate we entered the fallback idle task
+        // printf("Entering fallback idle task. \r\n");
+    } else {
+        // we should never reach here so throw an error
+        printf("Error: Already in fallback idle task and timed scheduler should not be called again.\r\n");
+    }
 }
 
 void osYield() {
