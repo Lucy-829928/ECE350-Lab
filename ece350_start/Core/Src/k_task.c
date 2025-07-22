@@ -38,7 +38,7 @@ void osKernelInit() {
         tcb_list[tcb_id].stack_size = INVALID_STACKPTR;
         tcb_list[tcb_id].ptask = NULL;
         tcb_list[tcb_id].sp = INVALID_STACKPTR; // Initialize stack pointer to NULL
-        tcb_list[tcb_id].deadline = 0xFFFFFFFF; // Initialize deadline to 0
+        tcb_list[tcb_id].deadline_remaining = 0xFFFFFFFF; // Initialize deadline to 0
     }
 }
 
@@ -61,7 +61,7 @@ int osCreateTask(TCB* task) {
     if (task->stack_size == 0) {
         task->stack_size = STACK_SIZE;
     }
-    task->deadline = 5; // Default deadline: 5ms
+    task->deadline_remaining = 5; // Default deadline: 5ms
     // now we determine if the target has a stack high. If so, reuse it. If not so, do not reuse it.
     // prioritizes reuse (if a dormant exists we reuse the dormant instead of allocating a new one)
     if (tcb_list[next_available_space].stack_high == INVALID_STACKPTR) {
@@ -69,7 +69,7 @@ int osCreateTask(TCB* task) {
 		// FIX @ z222ye: stack high and ptr is messing up with each other
         tcb_list[next_available_space].stack_high = current_stack_top;
         tcb_list[next_available_space].stack_size = task->stack_size;
-        tcb_list[next_available_space].deadline = task->deadline;
+        tcb_list[next_available_space].deadline_remaining = task->deadline_remaining;
     } else {
         // handle extreme situations
         if (task->stack_size > tcb_list[next_available_space].stack_size) {
@@ -79,7 +79,7 @@ int osCreateTask(TCB* task) {
                 if (tcb_list[i].state == DORMANT && tcb_list[i].stack_size >= task->stack_size) {
                     next_available_space = i;
                     refind_success = 1;
-                    tcb_list[next_available_space].deadline = task->deadline;
+                    tcb_list[next_available_space].deadline_remaining = task->deadline_remaining;
                     break;
                 }
             }
@@ -136,7 +136,7 @@ void create_idle_task() {
     tcb_list[0].state = READY;
     tcb_list[0].stack_high = zeroth_stack_top;
     tcb_list[0].stack_size = STACK_SIZE;
-    tcb_list[0].deadline = 0xFFFFFFFF; // @z222ye: not sure if this is the best value
+    tcb_list[0].deadline_remaining = 0xFFFFFFFF; // @z222ye: not sure if this is the best value
     U32* stackptr = (U32*)tcb_list[0].stack_high;
     *(--stackptr) = 0x01000000;
     *(--stackptr) = (U32)(tcb_list[0].ptask);  // PC: when SVC is exited, run print_continuously
@@ -165,8 +165,8 @@ int osKernelStart() {
     // A more sophisticated scheduler might pick based on priority
     for (int i = 1; i < MAX_TASKS; ++i) {
         if (tcb_list[i].state == READY) {
-            if (tcb_list[i].deadline < min_deadline) {
-                min_deadline = tcb_list[i].deadline;
+            if (tcb_list[i].deadline_remaining < min_deadline) {
+                min_deadline = tcb_list[i].deadline_remaining;
                 first_task_idx = i;
             }
         }
@@ -209,8 +209,8 @@ void scheduler(void) {
     // Search through all tasks except idle task (index 0)
     for (int i = 1; i < MAX_TASKS; i++) {
         if (tcb_list[i].state == READY) {
-            if (tcb_list[i].deadline < min_deadline) {
-                min_deadline = tcb_list[i].deadline;
+            if (tcb_list[i].deadline_remaining < min_deadline) {
+                min_deadline = tcb_list[i].deadline_remaining;
                 earliest_deadline_task = i;
             }
         }
@@ -250,7 +250,7 @@ int osTaskInfo(task_t TID, TCB* task_copy) {
     task_copy->stack_size = tcb_list[TID].stack_size;
     task_copy->state = tcb_list[TID].state;
     task_copy->tid = tcb_list[TID].tid;
-    task_copy->deadline = tcb_list[TID].deadline; // Copy the deadline
+    task_copy->deadline_remaining = tcb_list[TID].deadline_remaining; // Copy the deadline
     return RTX_OK;
 }
 
@@ -263,7 +263,7 @@ int printTCB(task_t TID) {
     printf("|== TCB stack high 0x[%lx] ==| \r\n", test_tcb.stack_high);
     printf("|== TCB state 0 dormant 1 ready 2 running: [%d] ==| \r\n", test_tcb.state);
     printf("|== TCB stack size [%d] ==| \r\n", test_tcb.stack_size);
-    printf("|== TCB deadline [%d] ==| \r\n", test_tcb.deadline);
+    printf("|== TCB deadline_remaining [%d] ==| \r\n", test_tcb.deadline_remaining);
     printf("--- TCB printout completed ---\r\n");
     return 0;
 }

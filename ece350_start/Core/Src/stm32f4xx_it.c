@@ -338,18 +338,18 @@ void SysTick_Handler(void)
   if (os_running && !os_fallback_idle) {
     for (int i = 1; i < MAX_TASKS; i++) {
         if (tcb_list[i].state == SLEEPING) {
-            if (tcb_list[i].deadline > 0) {
-                tcb_list[i].deadline--; // Decrement deadline
+            if (tcb_list[i].deadline_remaining > 0) {
+                tcb_list[i].deadline_remaining--; // Decrement deadline
             }
             // @z222ye: for sleeping tasks, they also need reductions on sleep_remaining time
-            if (tcb_list[i].deadline <= 0) {
+            if (tcb_list[i].deadline_remaining <= 0) {
                 tcb_list[i].state = READY; // Wake up the task
             }
         }
         if (tcb_list[i].state == RUNNING || tcb_list[i].state == READY) {
             // If the task is running, we might want to update its deadline or other state
-            tcb_list[i].deadline--; // Decrement deadline for running task
-            if (tcb_list[i].deadline <= 0) {
+            tcb_list[i].deadline_remaining--; // Decrement deadline for running task
+            if (tcb_list[i].deadline_remaining <= 0) {
                 // this is not allowed in EDF algorithm so we throw an error
                 printf("Error: Task %d has reached its deadline while running!\r\n", tcb_list[i].tid);
                 // @z222ye: may be we can handler this case in a better way
