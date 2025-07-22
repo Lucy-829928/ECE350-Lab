@@ -1,8 +1,8 @@
 #include "k_mem.h"
 #include "common.h"
 #include "k_task.h"
-static mem_header_t* free_list_head = NULL;
 
+static mem_header_t* free_list_head = NULL;
 static mem_header_t* first_item = NULL;
 
 static int is_initialized = 0;

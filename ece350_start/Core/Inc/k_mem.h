@@ -41,7 +41,6 @@ size_t align4(size_t size);
 void insert_into_free_list(mem_header_t* block);
 void remove_from_free_list(mem_header_t* block);
 
-// printf("End of Image: %x\r\n", &_img_end);
 // &_img_end is the "end address" we want
 extern U32 _img_end;
 extern U32 _estack;

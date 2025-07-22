@@ -54,11 +54,9 @@ void UsageFault_Handler(void);
 void SVC_Handler(void);
 void DebugMon_Handler(void);
 
-//__attribute__((naked)) void PendSV_Handler(void);
 
 void SysTick_Handler(void);
-
-
+//__attribute__((naked)) void PendSV_Handler(void);
 extern void PendSV_Handler(void);
 
 
@@ -66,6 +64,7 @@ extern void PendSV_Handler(void);
 /* USER CODE BEGIN EFP */
 void SVC_Handler_main(int svc_opcode);
 __attribute__((naked)) void init_first_task(void);
+__attribute__((naked)) void return_to_main(void);
 
 
 /* USER CODE END EFP */

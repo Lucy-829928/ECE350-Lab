@@ -138,12 +138,12 @@ void create_idle_task() {
 
 int osKernelStart() {
     // printf(" ============= KERNEL START ============= \r\n");
-    create_idle_task();
     if (!os_running) {
         os_running = 1;
     } else {
         return RTX_ERR;
     }
+    create_idle_task();
     int first_task_idx = -1;
     // Find the first task in READY state
     // A more sophisticated scheduler might pick based on priority
