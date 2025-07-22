@@ -150,8 +150,6 @@ int osSetDeadline(int deadline, task_t TID) {
     {
         // If the new deadline is earlier than the current task's deadline, we need to reschedule
         __asm volatile("SVC #2"); // Trigger PendSV for context switch
-        // @z222ye: TODO thinking of function will be returned and continue
-            // ... is there ever a function will lead 2 context switch unexpectedly?
     }
     return RTX_OK;
 }

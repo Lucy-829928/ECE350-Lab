@@ -27,7 +27,6 @@ typedef struct task_control_block {
     U8 state;                  // Task's state
     U16 stack_size;            // Stack size. Must be a multiple of 8
     U32* sp;                   // Current stack pointer for this task
-    // @z222ye: maybe it should be a signed int since what if deadline is negative?
     int initial_deadline;       // Initial deadline for the task
     int deadline_remaining;     // Deadline for the task
     int sleep_remaining;        // Remaining sleep time for the task
