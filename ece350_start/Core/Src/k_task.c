@@ -1,7 +1,6 @@
 #include "k_task.h"
 #include "common.h"
 #include "stm32f4xx_it.h"
-#include "core_cm4.h" // To access SysTick
 #include <stdio.h> //You are permitted to use this library, but currently only printf is implemented. Anything else is up to you!
 
 // TCB list global
@@ -190,10 +189,6 @@ int osKernelStart() {
     // to call launch_scheduler() when SVC number 16 is invoked.
     // printf("starting kernel 1 \r\n");
     os_running = 1; // Set the OS running flag
-    // @z222ye: I am thinking shall we reset timer ticks here
-        // Hope it works.
-        // And hope it doesnt cause any other components to break.
-    SysTick->VAL = 0;
     __asm volatile("SVC #1");
     // printf("\n YOUR PROGRAM IS DEAD \r\n");
     // Should not return from here if SVC is successful

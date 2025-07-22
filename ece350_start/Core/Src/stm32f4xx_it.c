@@ -188,6 +188,7 @@ __attribute__((naked)) void SVC_Handler(void)
 }
 
 __attribute__((naked)) void init_first_task(void){
+  // @z222ye: TODO ensure this actually work
     __asm volatile (
         ".syntax unified\n"
         ".thumb\n"
@@ -364,7 +365,8 @@ void SysTick_Handler(void)
             if (tcb_list[i].deadline_remaining <= 0) {
                 // this is not allowed in EDF algorithm so we throw an error
                 printf("Error: Task %d has reached its deadline while running!\r\n", tcb_list[i].tid);
-                // @z222ye: may be we can handler this case in a better way
+                // @z222ye: may be we can handler this case in a better way: reschedule it to deadline of deadline_static
+                // @z222ye: TODO ensure everytime change the deadline we need to reschedule
             }
         }
     }
