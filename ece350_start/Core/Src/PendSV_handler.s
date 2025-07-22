@@ -5,9 +5,14 @@
 .type PendSV_Handler, %function // Specify it's a function
 
 PendSV_Handler:
-    // 1. Disable interrupts (optional)
-    // CPSID I
-
+    // 1. Disable interrupts
+    // @z222ye: I choose to disable timer interrupt
+        // but maybe there is a better way to handle this
+    // @z222ye: Compared to disable interrupts, maybe we can just change priority 
+        // of PendSV and SVC_Hander to be lower than timer interrupt
+    // @z222ye: Or maybe we can use minimal critical sections with CPSID/CPSIE
+    CPSID I
+    
     // 2. Save R4-R11
     MRS R0, PSP
     STMDB R0!, {R4-R11}
@@ -24,7 +29,7 @@ PendSV_Handler:
     // or that you define with .equ
     // .equ TCB_STRUCT_SIZE_ASM, 20 // Example, ensure this matches your C define
     // .equ OFFSET_SP_IMM_ASM, 16   // Example, ensure this matches your C define
-    MOV R4, #20 // Use your actual immediate value or .equ
+    MOV R4, #24 // Use your actual immediate value or .equ
     MLA R2, R2, R4, R3
     STR R0, [R2, #16] // Use your actual immediate value or .equ
 
@@ -48,8 +53,10 @@ PendSV_Handler:
     // 7. Update PSP
     MSR PSP, R0
 
-    // 8. Enable interrupts (if disabled)
-    // CPSIE I
+    // 8. Enable interrupts
+    // @z222ye: I choose to disable timer interrupt
+        // but maybe there is a better way to handle this
+    CPSIE I
 
     // 9. Exit exception
     BX LR

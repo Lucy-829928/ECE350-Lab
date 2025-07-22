@@ -26,6 +26,8 @@ typedef struct task_control_block {
     U8 state;                  // Task's state
     U16 stack_size;            // Stack size. Must be a multiple of 8
     U32* sp;                   // Current stack pointer for this task
+    // @z222ye: maybe it should be a signed int since what if deadline is negative?
+    U32 deadline;               // Deadline for the task
 } TCB;
 
 // OS API
@@ -43,7 +45,9 @@ task_t osGetTID();
 
 // Externs
 extern int g_current_task_idx;
+extern U32 g_current_task_ddl;
 extern TCB tcb_list[];
 extern U32 g_main_return_lr;
+extern U32 os_running;
 
 #endif /* INC_K_TASK_H_ */

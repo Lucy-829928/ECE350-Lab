@@ -1,6 +1,7 @@
 #include "k_task.h"
 #include "common.h"
 #include "stm32f4xx_it.h"
+#include "core_cm4.h" // To access SysTick
 #include <stdio.h> //You are permitted to use this library, but currently only printf is implemented. Anything else is up to you!
 
 // TCB list global
@@ -35,6 +36,8 @@ void osKernelInit() {
         tcb_list[tcb_id].stack_high = INVALID_STACKPTR;
         tcb_list[tcb_id].stack_size = INVALID_STACKPTR;
         tcb_list[tcb_id].ptask = NULL;
+        tcb_list[tcb_id].sp = INVALID_STACKPTR; // Initialize stack pointer to NULL
+        tcb_list[tcb_id].deadline = 0xFFFFFFFF; // Initialize deadline to 0
     }
 }
 
@@ -57,6 +60,7 @@ int osCreateTask(TCB* task) {
     if (task->stack_size == 0) {
         task->stack_size = STACK_SIZE;
     }
+    task->deadline = 5; // Default deadline: 5ms
     // now we determine if the target has a stack high. If so, reuse it. If not so, do not reuse it.
     // prioritizes reuse (if a dormant exists we reuse the dormant instead of allocating a new one)
     if (tcb_list[next_available_space].stack_high == INVALID_STACKPTR) {
@@ -64,6 +68,7 @@ int osCreateTask(TCB* task) {
 		// FIX @ z222ye: stack high and ptr is messing up with each other
         tcb_list[next_available_space].stack_high = current_stack_top;
         tcb_list[next_available_space].stack_size = task->stack_size;
+        tcb_list[next_available_space].deadline = task->deadline;
     } else {
         // handle extreme situations
         if (task->stack_size > tcb_list[next_available_space].stack_size) {
@@ -73,6 +78,7 @@ int osCreateTask(TCB* task) {
                 if (tcb_list[i].state == DORMANT && tcb_list[i].stack_size >= task->stack_size) {
                     next_available_space = i;
                     refind_success = 1;
+                    tcb_list[next_available_space].deadline = task->deadline;
                     break;
                 }
             }
@@ -104,6 +110,14 @@ int osCreateTask(TCB* task) {
     task->state = tcb_list[next_available_space].state; // Set the state of the task
     task->tid = tcb_list[next_available_space].tid;
     task->stack_high = tcb_list[next_available_space].stack_high;
+
+    if (os_running) {
+        // If the OS is already running, we need to trigger a context switch
+        // to ensure scheduler can pick this task if its deadline is earlier
+        // @z222ye: one way to optimize is to only check whether new task has an earlier deadline
+            // than current one, then we can choose to schedule to new task (imple new SVC opcode)
+        __asm volatile("SVC #2"); // Trigger PendSV for context switch
+    }
     return RTX_OK;
 }
 
@@ -121,6 +135,7 @@ void create_idle_task() {
     tcb_list[0].state = READY;
     tcb_list[0].stack_high = zeroth_stack_top;
     tcb_list[0].stack_size = STACK_SIZE;
+    tcb_list[0].deadline = 0xFFFFFFFF; // @z222ye: not sure if this is the best value
     U32* stackptr = (U32*)tcb_list[0].stack_high;
     *(--stackptr) = 0x01000000;
     *(--stackptr) = (U32)(tcb_list[0].ptask);  // PC: when SVC is exited, run print_continuously
@@ -138,19 +153,21 @@ void create_idle_task() {
 
 int osKernelStart() {
     // printf(" ============= KERNEL START ============= \r\n");
-    if (!os_running) {
-        os_running = 1;
-    } else {
-        return RTX_ERR;
+    if (os_running) {
+        return RTX_ERR; // Kernel already started
     }
     create_idle_task();
     int first_task_idx = -1;
+    U32 min_deadline = 0xFFFFFFFF;  // Initialize with maximum possible value
+    
     // Find the first task in READY state
     // A more sophisticated scheduler might pick based on priority
     for (int i = 1; i < MAX_TASKS; ++i) {
         if (tcb_list[i].state == READY) {
-            first_task_idx = i;
-            break;
+            if (tcb_list[i].deadline < min_deadline) {
+                min_deadline = tcb_list[i].deadline;
+                first_task_idx = i;
+            }
         }
     }
     // printf("\n starting kernel 0, got task idx %d \r\n", first_task_idx);
@@ -165,6 +182,11 @@ int osKernelStart() {
     // The SVC_Handler (not implemented here) must be configured
     // to call launch_scheduler() when SVC number 16 is invoked.
     // printf("starting kernel 1 \r\n");
+    os_running = 1; // Set the OS running flag
+    // @z222ye: I am thinking shall we reset timer ticks here
+        // Hope it works.
+        // And hope it doesnt cause any other components to break.
+    SysTick->VAL = 0;
     __asm volatile("SVC #1");
     // printf("\n YOUR PROGRAM IS DEAD \r\n");
     // Should not return from here if SVC is successful
@@ -172,37 +194,37 @@ int osKernelStart() {
 }
 
 void scheduler(void) {
+    // @z222ye: sleep logic hasnt been implemented so we only imple basic EDF scheduler
     int prev_task_idx = g_current_task_idx;
-    int next_candidate_idx;
     if (prev_task_idx != -1 && tcb_list[prev_task_idx].state == RUNNING) {
         tcb_list[prev_task_idx].state = READY; // Mark current task as ready (if it wasn't blocked/terminated)
     }
-    for (int i = 0; i < MAX_TASKS; ++i) {
-        next_candidate_idx = (prev_task_idx + 1 + i) % MAX_TASKS; // Start search from task after previous
-        if (tcb_list[next_candidate_idx].state == READY && next_candidate_idx != 0) {
-            g_current_task_idx = next_candidate_idx;
-            tcb_list[g_current_task_idx].state = RUNNING;
-            // Only print if actual switch
-            // printf("SCHEDULER: Switched from Task %d to Task %d\r\n", (prev_task_idx == -1 ? -1 : prev_task_idx), g_current_task_idx);
-            return;
+
+    // Find task with earliest deadline
+    int earliest_deadline_task = -1;
+    U32 min_deadline = 0xFFFFFFFF;
+
+    // Search through all tasks except idle task (index 0)
+    for (int i = 1; i < MAX_TASKS; i++) {
+        if (tcb_list[i].state == READY) {
+            if (tcb_list[i].deadline < min_deadline) {
+                min_deadline = tcb_list[i].deadline;
+                earliest_deadline_task = i;
+            }
         }
     }
-    // If loop finishes, no other READY task was found.
-    // Check if the original task (which was set to READY) can continue.
-    if (prev_task_idx != -1 && tcb_list[prev_task_idx].state == READY) {
-        g_current_task_idx = prev_task_idx;
+    
+    // If we found a task with earliest deadline
+    if (earliest_deadline_task != -1) {
+        g_current_task_idx = earliest_deadline_task;
         tcb_list[g_current_task_idx].state = RUNNING;
-        // printf("SCHEDULER: No other READY task, continuing with Task %d\r\n", g_current_task_idx);
         return;
     }
-    // If we reach here, NO task is ready. This is a critical error unless you have an idle task.
-    // An IDLE task should always be in the READY state.
-    // printf("SCHEDULER: No task is READY to run! Falling back to idle task. \r\n");
-    g_current_task_idx = 0;
+    
+    // If no task is ready, fall back to idle task
+    g_current_task_idx = 0;  // Idle task index
     tcb_list[g_current_task_idx].state = RUNNING;
-    return;
-    // You might want to find a specific IDLE task here or enter a safe halt.
-    // For now, g_current_task_idx might be stale, potentially causing issues.
+    // @z222ye: maybe we can disable timer interrupt since here ... ?
 }
 
 void osYield() {
@@ -219,6 +241,7 @@ int osTaskInfo(task_t TID, TCB* task_copy) {
     task_copy->stack_size = tcb_list[TID].stack_size;
     task_copy->state = tcb_list[TID].state;
     task_copy->tid = tcb_list[TID].tid;
+    task_copy->deadline = tcb_list[TID].deadline; // Copy the deadline
     return RTX_OK;
 }
 
@@ -230,6 +253,8 @@ int printTCB(task_t TID) {
     printf("|== TCB stack ptr 0x[%lx] ==| \r\n", test_tcb.sp);
     printf("|== TCB stack high 0x[%lx] ==| \r\n", test_tcb.stack_high);
     printf("|== TCB state 0 dormant 1 ready 2 running: [%d] ==| \r\n", test_tcb.state);
+    printf("|== TCB stack size [%d] ==| \r\n", test_tcb.stack_size);
+    printf("|== TCB deadline [%d] ==| \r\n", test_tcb.deadline);
     printf("--- TCB printout completed ---\r\n");
     return 0;
 }

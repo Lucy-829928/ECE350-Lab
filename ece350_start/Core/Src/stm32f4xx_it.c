@@ -19,6 +19,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "common.h"
 #include "stm32f4xx_it.h"
 #include "k_task.h"
 
@@ -157,6 +158,10 @@ __attribute__((naked)) void SVC_Handler(void)
 //
 //  /* USER CODE END SVCall_IRQn 1 */
 	__asm volatile (
+          // 1. Disable interrupts
+          // @z222ye: I choose to disable timer interrupt
+              // but maybe there is a better way to handle this
+          "CPSID I\n"
 	        ".syntax unified\n"          // Ensure unified syntax
 	        ".thumb\n"                   // Ensure Thumb mode
 	        "TST LR, #4\n"               // Test bit 2 of LR (EXC_RETURN value).
@@ -172,6 +177,11 @@ __attribute__((naked)) void SVC_Handler(void)
 	                                     // We need to preserve it because BL will overwrite LR.
 
 	        "BL SVC_Handler_main\n"      // Call the C function. R0 has the opcode.
+
+          // 8. Enable interrupts
+          // @z222ye: I choose to disable timer interrupt
+              // but maybe there is a better way to handle this
+          "CPSIE I"
 	        "POP {PC}\n"                 // Return from exception.
 	        ".align\n"                   // Ensure proper alignment
 	);
@@ -325,7 +335,30 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-
+  if (os_running) {
+    for (int i = 1; i < MAX_TASKS; i++) {
+        if (tcb_list[i].state == SLEEPING) {
+            if (tcb_list[i].deadline > 0) {
+                tcb_list[i].deadline--; // Decrement deadline
+            }
+            if (tcb_list[i].deadline <= 0) {
+                tcb_list[i].state = READY; // Wake up the task
+            }
+        }
+        if (tcb_list[i].state == RUNNING || tcb_list[i].state == READY) {
+            // If the task is running, we might want to update its deadline or other state
+            tcb_list[i].deadline--; // Decrement deadline for running task
+            if (tcb_list[i].deadline <= 0) {
+                // this is not allowed in EDF algorithm so we throw an error
+                printf("Error: Task %d has reached its deadline while running!\r\n", tcb_list[i].tid);
+                // @z222ye: may be we can handler this case in a better way
+            }
+        }
+        SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
+        __DSB(); // Ensure the PendSV is set before returning
+        __ISB(); // Ensure the instruction is complete before returning
+    }
+  }
   /* USER CODE END SysTick_IRQn 1 */
 }
 

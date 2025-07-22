@@ -22,6 +22,7 @@
 #define DORMANT 0 //state of terminated task
 #define READY 1 //state of task that can be scheduled but is not running
 #define RUNNING 2 //state of running task
+#define SLEEPING 3 //state of task that is waiting for an event
 
 #define RTX_OK 0
 #define RTX_ERR -1
