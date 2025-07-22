@@ -29,7 +29,6 @@ typedef struct mem_header {
 	struct mem_header* prev_free; // 4/8 bytes
 
 	int PID;
-
 } mem_header_t; // sizeof: 24/44 bytes
 
 int k_mem_init();

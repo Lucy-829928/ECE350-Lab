@@ -349,6 +349,8 @@ void SysTick_Handler(void)
             if (tcb_list[i].deadline_remaining <= 0) {
               // this is not allowed in EDF algorithm so we throw an error
               printf("Error: Task %d has reached its deadline while sleeping!\r\n", tcb_list[i].tid);
+              // @z222ye: but maybe we can just reset deadline_remaining to initial_deadline
+                  // never mind, just see how test cases go
             }
             if (tcb_list[i].sleep_remaining <= 0) {
                 // Wake up the task

@@ -28,16 +28,19 @@ typedef struct task_control_block {
     U16 stack_size;            // Stack size. Must be a multiple of 8
     U32* sp;                   // Current stack pointer for this task
     // @z222ye: maybe it should be a signed int since what if deadline is negative?
-    U32 initial_deadline;       // Initial deadline for the task
-    U32 deadline_remaining;     // Deadline for the task
-    U32 sleep_remaining;        // Remaining sleep time for the task
+    int initial_deadline;       // Initial deadline for the task
+    int deadline_remaining;     // Deadline for the task
+    int sleep_remaining;        // Remaining sleep time for the task
 } TCB;
 
 // OS API
 void osKernelInit();
 int  osCreateTask(TCB* task);
+int  osCreateDeadlineTask(int deadline, TCB* task);
+int  osSetDeadline(int deadline, task_t TID);
 void scheduler(void);
 void osYield();
+void osPeriodYield();
 int  osTaskInfo(task_t TID, TCB* task_copy);
 int  printTCB(task_t TID);
 int  osTaskExit(void);

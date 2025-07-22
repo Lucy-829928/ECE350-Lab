@@ -1,4 +1,5 @@
 #include "k_task.h"
+#include <limits.h>
 #include "common.h"
 #include "stm32f4xx_it.h"
 #include <stdio.h> //You are permitted to use this library, but currently only printf is implemented. Anything else is up to you!
@@ -37,16 +38,19 @@ void osKernelInit() {
         tcb_list[tcb_id].stack_size = INVALID_STACKPTR;
         tcb_list[tcb_id].ptask = NULL;
         tcb_list[tcb_id].sp = INVALID_STACKPTR; // Initialize stack pointer to NULL
-        tcb_list[tcb_id].initial_deadline = 0xFFFFFFFF; // Default initial deadline for each task
+        tcb_list[tcb_id].initial_deadline = INT_MAX; // Default initial deadline for each task
         tcb_list[tcb_id].deadline_remaining 
             = tcb_list[tcb_id].initial_deadline;
-        tcb_list[tcb_id].sleep_remaining = 0xFFFFFFFF; // Initialize sleep time to infx
+        tcb_list[tcb_id].sleep_remaining = INT_MAX; // Initialize sleep time to infx
     }
 }
 
-int osCreateTask(TCB* task) {
+int osCreateDeadlineTask(int deadline, TCB* task) {
     if (task == NULL || task->ptask == NULL || task->stack_size % 8 != 0) {
         return RTX_ERR; // Invalid task parameters
+    }
+    if (deadline <= 0) {
+        return RTX_ERR; // Invalid deadline
     }
     // first find the next available spot
     int next_available_space = -1;
@@ -63,7 +67,7 @@ int osCreateTask(TCB* task) {
     if (task->stack_size == 0) {
         task->stack_size = STACK_SIZE;
     }
-    task->initial_deadline = task->deadline_remaining = 5; // Default deadline: 5ms
+    task->initial_deadline = task->deadline_remaining = deadline; // Default deadline: 5ms
     // now we determine if the target has a stack high. If so, reuse it. If not so, do not reuse it.
     // prioritizes reuse (if a dormant exists we reuse the dormant instead of allocating a new one)
     if (tcb_list[next_available_space].stack_high == INVALID_STACKPTR) {
@@ -128,6 +132,30 @@ int osCreateTask(TCB* task) {
     return RTX_OK;
 }
 
+int osCreateTask(TCB* task) {
+    return osCreateDeadlineTask(5, task);
+}
+
+int osSetDeadline(int deadline, task_t TID) {
+    if (TID <= 0 || TID >= MAX_TASKS || tcb_list[TID].state != READY) {
+        return RTX_ERR; // Invalid TID or task is dormant or sleeping
+    }
+    if (deadline <= 0) {
+        return RTX_ERR; // Invalid deadline
+    }
+    tcb_list[TID].initial_deadline = tcb_list[TID].deadline_remaining = deadline;
+    if (tcb_list[TID].deadline_remaining < tcb_list[g_current_task_idx].deadline_remaining || 
+        (tcb_list[TID].deadline_remaining = tcb_list[g_current_task_idx].deadline_remaining 
+            && tcb_list[TID].tid < tcb_list[g_current_task_idx].tid)) 
+    {
+        // If the new deadline is earlier than the current task's deadline, we need to reschedule
+        __asm volatile("SVC #2"); // Trigger PendSV for context switch
+        // @z222ye: TODO thinking of function will be returned and continue
+            // ... is there ever a function will lead 2 context switch unexpectedly?
+    }
+    return RTX_OK;
+}
+
 void idle_task() {
     // printf("IDLE task running. \r\n");
     while (1) {
@@ -164,7 +192,7 @@ int osKernelStart() {
     }
     create_idle_task();
     int first_task_idx = -1;
-    U32 min_deadline = 0xFFFFFFFF;  // Initialize with maximum possible value
+    int min_deadline = INT_MAX;  // Initialize with maximum possible value
     
     // Find the earliest task in READY state
     for (int i = 1; i < MAX_TASKS; ++i) {
@@ -203,7 +231,7 @@ void scheduler(void) {
 
     // Find task with earliest deadline
     int earliest_deadline_task = -1;
-    U32 min_deadline = 0xFFFFFFFF;
+    int min_deadline = INT_MAX;
 
     // Search through all tasks except idle task (index 0)
     for (int i = 1; i < MAX_TASKS; i++) {
@@ -231,6 +259,10 @@ void osYield() {
     tcb_list[g_current_task_idx].deadline_remaining 
         = tcb_list[g_current_task_idx].initial_deadline; // Reset deadline for the yield task
     __asm volatile("SVC #2");
+}
+
+void osPeriodYield() {
+    osSleep(tcb_list[g_current_task_idx].deadline_remaining);
 }
 
 void osSleep(int timeInMs) {
