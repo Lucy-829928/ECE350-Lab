@@ -181,7 +181,7 @@ __attribute__((naked)) void SVC_Handler(void)
           // 8. Enable interrupts
           // @z222ye: I choose to disable timer interrupt
               // but maybe there is a better way to handle this
-          "CPSIE I"
+          "CPSIE I\n"
 	        "POP {PC}\n"                 // Return from exception.
 	        ".align\n"                   // Ensure proper alignment
 	);
