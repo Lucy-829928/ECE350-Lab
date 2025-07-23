@@ -8,7 +8,13 @@
 .equ TCB_STRUCT_SIZE, 32    // Size of TCB struct (9 fields × 4 bytes each)
 .equ SP_OFFSET, 16         // Offset of sp field in TCB struct
 
-PendSV_Handler:    
+PendSV_Handler:
+    // 1. Disable interrupts
+    // @z222ye: I choose to disable timer interrupt
+        // but maybe there is a better way to handle this
+    // @z222ye: Compared to disable interrupts, maybe we can just change priority 
+        // of PendSV and SVC_Hander to be lower than timer interrupt
+    // @z222ye: Or maybe we can use minimal critical sections with CPSID/CPSIE
     CPSID I
     
     // 2. Save R4-R11
@@ -47,7 +53,8 @@ PendSV_Handler:
     // @z222ye: I choose to disable timer interrupt
         // but maybe there is a better way to handle this
     CPSIE I
-    
+
+    // 9. Exit exception
     BX LR
 
 .size PendSV_Handler, . - PendSV_Handler // Optional: specify function size
