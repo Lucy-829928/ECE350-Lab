@@ -143,14 +143,8 @@ int osSetDeadline(int deadline, task_t TID) {
     if (deadline <= 0) {
         return RTX_ERR; // Invalid deadline
     }
-    tcb_list[TID].initial_deadline = tcb_list[TID].deadline_remaining = deadline;
-    if (tcb_list[TID].deadline_remaining < tcb_list[g_current_task_idx].deadline_remaining || 
-        (tcb_list[TID].deadline_remaining = tcb_list[g_current_task_idx].deadline_remaining 
-            && tcb_list[TID].tid < tcb_list[g_current_task_idx].tid)) 
-    {
-        // If the new deadline is earlier than the current task's deadline, we need to reschedule
-        __asm volatile("SVC #2"); // Trigger PendSV for context switch
-    }
+    // If the new deadline is earlier than the current task's deadline, we need to reschedule
+    __asm volatile("SVC #2"); // Trigger PendSV for context switch
     return RTX_OK;
 }
 
