@@ -9,13 +9,9 @@
 .equ SP_OFFSET, 16         // Offset of sp field in TCB struct
 
 PendSV_Handler:
-    // 1. Disable interrupts
-    // @z222ye: I choose to disable timer interrupt
-        // but maybe there is a better way to handle this
-    // @z222ye: Compared to disable interrupts, maybe we can just change priority 
-        // of PendSV and SVC_Hander to be lower than timer interrupt
-    // @z222ye: Or maybe we can use minimal critical sections with CPSID/CPSIE
-    CPSID I
+    // Rule #2: Use BASEPRI instead of global interrupt disable
+    MOVS R0, #1
+    MSR BASEPRI, R0    // Set BASEPRI to 1 to mask lower priority interrupts
     
     // 2. Save R4-R11
     MRS R0, PSP
@@ -55,6 +51,9 @@ PendSV_Handler:
     CPSIE I
 
     // 9. Exit exception
+    MOVS R0, #0
+    MSR BASEPRI, R0
+    
     BX LR
 
 .size PendSV_Handler, . - PendSV_Handler // Optional: specify function size

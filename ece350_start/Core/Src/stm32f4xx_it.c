@@ -161,7 +161,6 @@ __attribute__((naked)) void SVC_Handler(void)
           // 1. Disable interrupts
           // @z222ye: I choose to disable timer interrupt
               // but maybe there is a better way to handle this
-          "CPSID I\n"
 	        ".syntax unified\n"          // Ensure unified syntax
 	        ".thumb\n"                   // Ensure Thumb mode
 	        "TST LR, #4\n"               // Test bit 2 of LR (EXC_RETURN value).
@@ -181,7 +180,6 @@ __attribute__((naked)) void SVC_Handler(void)
           // 8. Enable interrupts
           // @z222ye: I choose to disable timer interrupt
               // but maybe there is a better way to handle this
-          "CPSIE I\n"
 	        "POP {PC}\n"                 // Return from exception.
 	        ".align\n"                   // Ensure proper alignment
 	);
@@ -228,9 +226,9 @@ __attribute__((naked)) void init_first_task(void){
         "MRS R2, PSP\n"                      // R2 = task's SP (should point to where R4 is saved)
         "LDMIA R2!, {R4-R11}\n"              // Load R4-R11 from task stack, R2 updated
         "MSR PSP, R2\n"                      // Update PSP to new top (after R4-R11 loaded)
-        "CPSIE I\n"                          // Re-enable interrupts
 
         "MOV LR, #0xFFFFFFFD\n"              // EXC_RETURN: Return to Thread mode, using PSP.
+        "CPSIE I\n"                          // Re-enable interrupts
         "BX LR\n"                            // This will pop R0-R3, R12, LR, PC, xPSR from new task's PSP
 
         : // No output operands
@@ -337,8 +335,11 @@ void SysTick_Handler(void)
     HAL_IncTick();
     /* USER CODE BEGIN SysTick_IRQn 1 */
     if (os_running) {
-        int need_context_switch = 0;  // Flag to track if we need to switch context
-
+        // Rule #4: Use BASEPRI for critical section during queue modification
+        __set_BASEPRI(1); // Mask lower priority interrupts
+        
+        int need_context_switch = 0;
+        
         for (int i = 1; i < MAX_TASKS; i++) {
             if (tcb_list[i].state == SLEEPING) {
                 tcb_list[i].deadline_remaining--;
@@ -368,6 +369,8 @@ void SysTick_Handler(void)
             __DSB();
             __ISB();
         }
+        
+        __set_BASEPRI(0); // Clear BASEPRI to exit critical section
     }
     /* USER CODE END SysTick_IRQn 1 */
 }

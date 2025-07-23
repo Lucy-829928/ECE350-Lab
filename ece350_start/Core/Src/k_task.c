@@ -23,6 +23,9 @@ task_t osGetTID() {
 }
 
 void osKernelInit() {
+    // Rule #3: Disable interrupts during kernel initialization
+    __disable_irq();
+    
     // printf("========== OS KERNEL INIT ========== \r\n");
     g_current_task_idx = -1;
     U32* MSP_INIT_VAL = *(U32**)0x0;
@@ -43,6 +46,9 @@ void osKernelInit() {
             = tcb_list[tcb_id].initial_deadline;
         tcb_list[tcb_id].sleep_remaining = INT_MAX; // Initialize sleep time to infx
     }
+    
+    // Rule #3: Re-enable interrupts after initialization
+    __enable_irq();
 }
 
 int osCreateDeadlineTask(int deadline, TCB* task) {
@@ -141,15 +147,15 @@ int osCreateTask(TCB* task) {
 
 int osSetDeadline(int deadline, task_t TID) {
     if (TID <= 0 || TID >= MAX_TASKS || tcb_list[TID].state != READY) {
-        return RTX_ERR; // Invalid TID or task is dormant or sleeping
+        return RTX_ERR;
     }
     if (deadline <= 0) {
-        return RTX_ERR; // Invalid deadline
+        return RTX_ERR;
     }
     
-    // Disable interrupts to prevent race conditions
-    __asm volatile("CPSID I");
-    // @z222ye: this reminds maybe a lot of place actually need to disable interrupts
+    // Rule #1: Block timer interrupts during deadline modification
+    U32 basepri_old = __get_BASEPRI();
+    __set_BASEPRI(1); // Block SysTick and lower priority interrupts
     
     // Set the new deadline
     tcb_list[TID].deadline_remaining = deadline;
@@ -157,10 +163,11 @@ int osSetDeadline(int deadline, task_t TID) {
     
     // Check if we need to preempt current task
     int current_deadline = tcb_list[g_current_task_idx].deadline_remaining;
-    int should_preempt = (deadline < current_deadline || (deadline == current_deadline && g_current_task_idx > TID));
+    int should_preempt = (deadline < current_deadline || 
+                         (deadline == current_deadline && g_current_task_idx > TID));
     
-    // Re-enable interrupts
-    __asm volatile("CPSIE I");
+    // Restore original BASEPRI
+    __set_BASEPRI(basepri_old);
     
     // Trigger context switch if necessary
     if (should_preempt) {
@@ -200,8 +207,12 @@ void create_idle_task() {
 }
 
 int osKernelStart() {
+    // Rule #3: Disable interrupts during kernel start
+    __disable_irq();
+    
     // printf(" ============= KERNEL START ============= \r\n");
     if (os_running) {
+        __enable_irq();  // Re-enable if returning early
         return RTX_ERR; // Kernel already started
     }
     create_idle_task();
@@ -230,11 +241,13 @@ int osKernelStart() {
     // The SVC_Handler (not implemented here) must be configured
     // to call launch_scheduler() when SVC number 16 is invoked.
     // printf("starting kernel 1 \r\n");
-    os_running = 1; // Set the OS running flag
+    os_running = 1;
+    
+    // Rule #3: Keep interrupts disabled until SVC #1
+    // SVC #1 handler will properly start the system and re-enable interrupts
     __asm volatile("SVC #1");
-    // printf("\n YOUR PROGRAM IS DEAD \r\n");
-    // Should not return from here if SVC is successful
-    return RTX_ERR; // Indicate failure if SVC didn't switch context
+    
+    return RTX_ERR;
 }
 
 void scheduler(void) {
