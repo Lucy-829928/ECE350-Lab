@@ -143,8 +143,27 @@ int osSetDeadline(int deadline, task_t TID) {
     if (deadline <= 0) {
         return RTX_ERR; // Invalid deadline
     }
-    // If the new deadline is earlier than the current task's deadline, we need to reschedule
-    __asm volatile("SVC #2"); // Trigger PendSV for context switch
+    
+    // Disable interrupts to prevent race conditions
+    __asm volatile("CPSID I");
+    // @z222ye: this reminds maybe a lot of place actually need to disable interrupts
+    
+    // Set the new deadline
+    tcb_list[TID].deadline_remaining = deadline;
+    tcb_list[TID].initial_deadline = deadline;
+    
+    // Check if we need to preempt current task
+    int current_deadline = tcb_list[g_current_task_idx].deadline_remaining;
+    int should_preempt = (deadline < current_deadline || (deadline == current_deadline && g_current_task_idx > TID));
+    
+    // Re-enable interrupts
+    __asm volatile("CPSIE I");
+    
+    // Trigger context switch if necessary
+    if (should_preempt) {
+        __asm volatile("SVC #2");
+    }
+
     return RTX_OK;
 }
 
