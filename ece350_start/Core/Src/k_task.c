@@ -273,6 +273,8 @@ void osYield() {
 }
 
 void osPeriodYield() {
+    // @z222ye: consider a case where deadline_remaining is 0, then we should wait SysTick to reset it with initial_deadline
+        // so ... TODO maybe we need change something here
     osSleep(tcb_list[g_current_task_idx].deadline_remaining);
 }
 
