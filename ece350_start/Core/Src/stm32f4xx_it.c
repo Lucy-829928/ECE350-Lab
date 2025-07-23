@@ -371,7 +371,6 @@ void SysTick_Handler(void)
                 // @z222ye: may be we can handler this case in a better way: reschedule it of initial_deadline
                 // @z222ye: add this line to debug
                 tcb_list[i].deadline_remaining = tcb_list[i].initial_deadline; // Reset deadline for the sleep task
-              }
             }
         }
     }
