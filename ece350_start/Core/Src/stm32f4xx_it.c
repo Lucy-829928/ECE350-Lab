@@ -331,56 +331,45 @@ void DebugMon_Handler(void)
   */
 void SysTick_Handler(void)
 {
-  /* USER CODE BEGIN SysTick_IRQn 0 */
+    /* USER CODE BEGIN SysTick_IRQn 0 */
+    
+    /* USER CODE END SysTick_IRQn 0 */
+    HAL_IncTick();
+    /* USER CODE BEGIN SysTick_IRQn 1 */
+    if (os_running) {
+        int need_context_switch = 0;  // Flag to track if we need to switch context
 
-  /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
-  /* USER CODE BEGIN SysTick_IRQn 1 */
-  if (os_running) {
-    for (int i = 1; i < MAX_TASKS; i++) {
-        if (tcb_list[i].state == SLEEPING) {
-            if (tcb_list[i].deadline_remaining > 0) {
-                tcb_list[i].deadline_remaining--; // Decrement deadline
+        for (int i = 1; i < MAX_TASKS; i++) {
+            if (tcb_list[i].state == SLEEPING) {
+                tcb_list[i].deadline_remaining--;
+                tcb_list[i].sleep_remaining--;
+                
+                // Only set need_context_switch if state changes
+                if (tcb_list[i].deadline_remaining <= 0 || tcb_list[i].sleep_remaining <= 0) {
+                    need_context_switch = 1;
+                    tcb_list[i].state = READY;
+                    tcb_list[i].sleep_remaining = 0;
+                    tcb_list[i].deadline_remaining = tcb_list[i].initial_deadline;
+                }
             }
-            if (tcb_list[i].sleep_remaining > 0) {
-                tcb_list[i].sleep_remaining--; // Decrement sleep time
-            }
-            if (tcb_list[i].deadline_remaining <= 0) {
-              // this is not allowed in EDF algorithm so we throw an error
-              // printf("Error: Task %d has reached its deadline while sleeping!\r\n", tcb_list[i].tid);
-              // @z222ye: but maybe we can just reset deadline_remaining to initial_deadline
-                  // never mind, just see how test cases go
-              // @z222ye: add this line to debug
-              tcb_list[i].deadline_remaining = tcb_list[i].initial_deadline; // Reset deadline for the sleep task
-            }
-            if (tcb_list[i].sleep_remaining <= 0) {
-                // Wake up the task
-                tcb_list[i].state = READY;
-                // @z222ye: but i initialized default sleep_remaining with maximum value? nvm...
-                tcb_list[i].sleep_remaining = 0; // Reset sleep time
-                tcb_list[i].deadline_remaining 
-                    = tcb_list[i].initial_deadline; // Reset deadline for the sleep task
+            if (tcb_list[i].state == RUNNING || tcb_list[i].state == READY) {
+                tcb_list[i].deadline_remaining--;
+
+                if (tcb_list[i].deadline_remaining <= 0) {
+                    need_context_switch = 1;
+                    tcb_list[i].deadline_remaining = tcb_list[i].initial_deadline;
+                }
             }
         }
-        if (tcb_list[i].state == RUNNING || tcb_list[i].state == READY) {
-            // If the task is running, we might want to update its deadline or other state
-            tcb_list[i].deadline_remaining--; // Decrement deadline for running task
-            if (tcb_list[i].deadline_remaining <= 0) {
-                // this is not allowed in EDF algorithm so we throw an error
-                // printf("Error: Task %d has reached its deadline while running!\r\n", tcb_list[i].tid);
-                // @z222ye: may be we can handler this case in a better way: reschedule it of initial_deadline
-                // @z222ye: add this line to debug
-                tcb_list[i].deadline_remaining = tcb_list[i].initial_deadline; // Reset deadline for the sleep task
-            }
+
+        // Only trigger context switch if needed
+        if (need_context_switch) {
+            SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
+            __DSB();
+            __ISB();
         }
     }
-    // @z222ye: maybe we can one more logic: if all tasks died we have to run idle task,
-      // then we dont have to execute following lines anymore
-    SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
-    __DSB(); // Ensure the PendSV is set before returning
-    __ISB(); // Ensure the instruction is complete before returning
-  }
-  /* USER CODE END SysTick_IRQn 1 */
+    /* USER CODE END SysTick_IRQn 1 */
 }
 
 /******************************************************************************/

@@ -123,11 +123,14 @@ int osCreateDeadlineTask(int deadline, TCB* task) {
     task->stack_high = tcb_list[next_available_space].stack_high;
 
     if (os_running) {
-        // If the OS is already running, we need to trigger a context switch
-        // to ensure scheduler can pick this task if its deadline is earlier
-        // @z222ye: one way to optimize is to only check whether new task has an earlier deadline
-            // than current one, then we can choose to schedule to new task (imple new SVC opcode)
-        __asm volatile("SVC #2"); // Trigger PendSV for context switch
+        // Only trigger context switch if new task has earlier deadline or same deadline with lower TID
+        int current_deadline = tcb_list[g_current_task_idx].deadline_remaining;
+        int new_task_deadline = tcb_list[next_available_space].deadline_remaining;
+        
+        if (new_task_deadline < current_deadline || 
+            (new_task_deadline == current_deadline && next_available_space < g_current_task_idx)) {
+            __asm volatile("SVC #2"); // Trigger PendSV for context switch
+        }
     }
     return RTX_OK;
 }
@@ -274,7 +277,7 @@ void osYield() {
 
 void osPeriodYield() {
     // @z222ye: consider a case where deadline_remaining is 0, then we should wait SysTick to reset it with initial_deadline
-        // so ... TODO maybe we need change something here
+        // so ... TODO maybe we need change something here like reset deadline_remaining to initial_deadline
     osSleep(tcb_list[g_current_task_idx].deadline_remaining);
 }
 
