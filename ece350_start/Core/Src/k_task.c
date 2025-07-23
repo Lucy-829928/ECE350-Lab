@@ -152,10 +152,8 @@ int osSetDeadline(int deadline, task_t TID) {
     if (deadline <= 0) {
         return RTX_ERR;
     }
-    
-    // Rule #1: Block timer interrupts during deadline modification
-    U32 basepri_old = __get_BASEPRI();
-    __set_BASEPRI(1); // Block SysTick and lower priority interrupts
+        
+    __asm volatile("CPSID I");
     
     // Set the new deadline
     tcb_list[TID].deadline_remaining = deadline;
@@ -166,8 +164,7 @@ int osSetDeadline(int deadline, task_t TID) {
     int should_preempt = (deadline < current_deadline || 
                          (deadline == current_deadline && g_current_task_idx > TID));
     
-    // Restore original BASEPRI
-    __set_BASEPRI(basepri_old);
+    __asm volatile("CPSIE I");
     
     // Trigger context switch if necessary
     if (should_preempt) {

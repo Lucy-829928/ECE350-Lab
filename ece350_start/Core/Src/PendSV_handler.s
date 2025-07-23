@@ -8,10 +8,8 @@
 .equ TCB_STRUCT_SIZE, 32    // Size of TCB struct (9 fields × 4 bytes each)
 .equ SP_OFFSET, 16         // Offset of sp field in TCB struct
 
-PendSV_Handler:
-    // Rule #2: Use BASEPRI instead of global interrupt disable
-    MOVS R0, #1
-    MSR BASEPRI, R0    // Set BASEPRI to 1 to mask lower priority interrupts
+PendSV_Handler:    
+    CPSID I
     
     // 2. Save R4-R11
     MRS R0, PSP
@@ -49,10 +47,6 @@ PendSV_Handler:
     // @z222ye: I choose to disable timer interrupt
         // but maybe there is a better way to handle this
     CPSIE I
-
-    // 9. Exit exception
-    MOVS R0, #0
-    MSR BASEPRI, R0
     
     BX LR
 

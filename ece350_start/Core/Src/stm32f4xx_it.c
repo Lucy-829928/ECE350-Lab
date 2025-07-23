@@ -335,8 +335,7 @@ void SysTick_Handler(void)
     HAL_IncTick();
     /* USER CODE BEGIN SysTick_IRQn 1 */
     if (os_running) {
-        // Rule #4: Use BASEPRI for critical section during queue modification
-        __set_BASEPRI(1); // Mask lower priority interrupts
+        __asm volatile("CPSID I"); // Disable interrupts
         
         int need_context_switch = 0;
         
@@ -370,7 +369,7 @@ void SysTick_Handler(void)
             __ISB();
         }
         
-        __set_BASEPRI(0); // Clear BASEPRI to exit critical section
+        __asm volatile("CPSIE I"); // Re-enable interrupts
     }
     /* USER CODE END SysTick_IRQn 1 */
 }
