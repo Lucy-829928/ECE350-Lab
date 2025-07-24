@@ -290,9 +290,20 @@ void osYield() {
 }
 
 void osPeriodYield() {
-    // @z222ye: consider a case where deadline_remaining is 0, then we should wait SysTick to reset it with initial_deadline
-        // so ... TODO maybe we need change something here like reset deadline_remaining to initial_deadline
-    osSleep(tcb_list[g_current_task_idx].deadline_remaining);
+    __asm volatile("CPSID I"); // Start critical section
+
+    // Get the time remaining in the current period. This is how long we need to sleep.
+    int time_to_sleep = tcb_list[g_current_task_idx].deadline_remaining;
+
+    // IMPORTANT: Reset the deadline for the NEXT period NOW.
+    // This task's current deadline is met. Its next deadline is one full period away from now.
+    // By resetting it, we ensure that when the scheduler runs, this task has a long deadline
+    // and will not be picked again until other tasks have run.
+    tcb_list[g_current_task_idx].deadline_remaining = tcb_list[g_current_task_idx].initial_deadline;
+    __asm volatile("CPSIE I"); // End critical section
+
+    // Now, go to sleep for the remainder of the *original* period.
+    osSleep(time_to_sleep);
 }
 
 void osSleep(int timeInMs) {
