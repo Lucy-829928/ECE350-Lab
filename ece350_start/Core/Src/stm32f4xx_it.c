@@ -355,7 +355,7 @@ void SysTick_Handler(void)
                     need_context_switch = 1;
                     tcb_list[i].state = READY;
                     tcb_list[i].sleep_remaining = 0;
-                    tcb_list[i].deadline_remaining = tcb_list[i].initial_deadline;
+                    tcb_list[i].deadline_remaining += tcb_list[i].initial_deadline;
                 }
             }
         }
