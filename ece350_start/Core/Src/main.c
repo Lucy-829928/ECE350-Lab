@@ -92,16 +92,16 @@
 // 系统时钟频率 (根据SystemClock_Config中的PLL配置计算得出)
 #define SYSTEM_CLOCK_HZ   84000000    // 84MHz = (16MHz / 16 * 336) / 4
 
-// 周期性任务
-void TaskA(void *p) {
+// 测试任务
+void TaskSleep(void *p) {
     volatile uint32_t last_tick = 0;
     volatile uint32_t current_tick = 0;
     volatile uint32_t delta_us = 0;
-    int resume_count = 0;
+    int test_phase = 1;
 
     // 初始化DWT计数器
     if (ARM_CM_DWT_CTRL != 0) {
-        printf("---- test5 ----\r\n");
+        printf("---- test7 ----\r\n");
         printf("Using DWT for timing\r\n\r\n");
         ARM_CM_DEMCR |= 1 << 24;  // 使能DWT
         ARM_CM_DWT_CYCCNT = 0;    // 清零计数器
@@ -111,22 +111,38 @@ void TaskA(void *p) {
         return;
     }
 
-    printf("A started \r\n");
-    last_tick = ARM_CM_DWT_CYCCNT;
-
+    printf("Task started\r\n");
+    
     while(1) {
-        osPeriodYield();  // 周期性yield
+        last_tick = ARM_CM_DWT_CYCCNT;
         
-        if (resume_count < 10) {  // 只打印前10次resume
-            resume_count++;
-            current_tick = ARM_CM_DWT_CYCCNT;
-            // 转换为微秒
-            delta_us = ((current_tick - last_tick) * 1000000) / SYSTEM_CLOCK_HZ;
-            printf("Resume%d delta time =%lu us\r\n", resume_count, delta_us);
-            last_tick = current_tick;
-        } else {
-            osPeriodYield();
+        switch(test_phase) {
+            case 1:
+                printf("osSleep 5 ms\r\n");
+                osSleep(5);
+                break;
+            case 2:
+                printf("osSleep 1 ms\r\n");
+                osSleep(1);
+                break;
+            case 3:
+                printf("osSleep 1 ms\r\n");
+                osSleep(1);
+                break;
+            case 4:
+                printf("osSleep 1 ms\r\n");
+                osSleep(1);
+                break;
+            default:
+                osSleep(1000);  // 测试完成后长睡眠
+                continue;
         }
+        
+        current_tick = ARM_CM_DWT_CYCCNT;
+        delta_us = ((current_tick - last_tick) * 1000000) / SYSTEM_CLOCK_HZ;
+        printf("Awake%d delta time =%lu us\r\n", test_phase, delta_us);
+        
+        test_phase++;
     }
 }
 
@@ -145,10 +161,9 @@ int main(void)
     TCB task;
     task.stack_size = STACK_SIZE;
 
-    // 创建周期性任务A
-    task.ptask = &TaskA;
-    // 设置deadline为4ms (4000us)，这样应该能保证在3000-5000us范围内运行
-    osCreateDeadlineTask(4, &task);
+    // 创建任务，使用普通的osCreateTask，不需要特殊的deadline
+    task.ptask = &TaskSleep;
+    osCreateTask(&task);
 
     osKernelStart();
 

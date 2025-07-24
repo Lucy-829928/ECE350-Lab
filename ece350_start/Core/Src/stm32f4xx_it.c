@@ -351,7 +351,7 @@ void SysTick_Handler(void)
                 tcb_list[i].sleep_remaining--;
                 
                 // Only set need_context_switch if state changes
-                if (tcb_list[i].deadline_remaining <= 0 || tcb_list[i].sleep_remaining <= 0) {
+                if (tcb_list[i].sleep_remaining <= 0) {
                     need_context_switch = 1;
                     tcb_list[i].state = READY;
                     tcb_list[i].sleep_remaining = 0;
