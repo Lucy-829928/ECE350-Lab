@@ -101,6 +101,12 @@ int osCreateDeadlineTask(int deadline, TCB* task) {
             }
         }
     }
+
+    if ((tcb_list[next_available_space].stack_high - tcb_list[next_available_space].stack_size) < 0x20010000){
+        __asm volatile("CPSIE I"); // Re-enable interrupts before returning
+        return RTX_ERR;
+    }
+
     // now we have the index ready.
     tcb_list[next_available_space].ptask = task->ptask;
     tcb_list[next_available_space].state = READY;
