@@ -338,8 +338,6 @@ void SysTick_Handler(void)
         int need_context_switch = 0;  // Flag to track if we need to switch context
 
 
-        for(int i = 0; i < 2000; i++);
-
         for (int i = 1; i < MAX_TASKS; i++) {
             if (tcb_list[i].state == RUNNING || tcb_list[i].state == READY) {
                 tcb_list[i].deadline_remaining--;
