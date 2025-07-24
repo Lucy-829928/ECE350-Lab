@@ -3,6 +3,7 @@
 #include "common.h"
 #include "stm32f4xx_it.h"
 #include <stdio.h> //You are permitted to use this library, but currently only printf is implemented. Anything else is up to you!
+#include "stm32f4xx_hal.h"
 
 // TCB list global
 TCB tcb_list[MAX_TASKS];
