@@ -52,6 +52,7 @@ int osCreateDeadlineTask(int deadline, TCB* task) {
     if (deadline <= 0) {
         return RTX_ERR; // Invalid deadline
     }
+    __asm volatile("CPSID I"); // Disable interrupts
     // first find the next available spot
     int next_available_space = -1;
     for (int i = 1; i < MAX_TASKS; i++) {
@@ -62,6 +63,7 @@ int osCreateDeadlineTask(int deadline, TCB* task) {
     }
 	// z222ye: switch the order of following 2 if statements
     if (next_available_space == -1) {
+        __asm volatile("CPSIE I"); // Re-enable interrupts before returning
         return RTX_ERR;
     }
     if (task->stack_size == 0) {
@@ -94,6 +96,7 @@ int osCreateDeadlineTask(int deadline, TCB* task) {
                 }
             }
             if (refind_success == 0) {
+                __asm volatile("CPSIE I"); // Re-enable interrupts before returning
                 return RTX_ERR;
             }
         }
@@ -129,9 +132,12 @@ int osCreateDeadlineTask(int deadline, TCB* task) {
         
         if (new_task_deadline < current_deadline || 
             (new_task_deadline == current_deadline && next_available_space < g_current_task_idx)) {
+            __asm volatile("CPSIE I"); // Re-enable interrupts before returning
             __asm volatile("SVC #2"); // Trigger PendSV for context switch
+            return RTX_OK; // Context switch requested
         }
     }
+    __asm volatile("CPSIE I"); // Re-enable interrupts before returning
     return RTX_OK;
 }
 
@@ -270,8 +276,10 @@ void scheduler(void) {
 }
 
 void osYield() {
+    __asm volatile("CPSID I"); // Disable interrupts to prevent
     tcb_list[g_current_task_idx].deadline_remaining 
         = tcb_list[g_current_task_idx].initial_deadline; // Reset deadline for the yield task
+    __asm volatile("CPSIE I"); // Re-enable interrupts
     __asm volatile("SVC #2");
 }
 
@@ -286,8 +294,10 @@ void osSleep(int timeInMs) {
         // @z222ye: although i dont think idle task will enter this case
         return; // Invalid sleep time or no valid task
     }
+    __asm volatile("CPSID I"); // Disable interrupts to prevent
     tcb_list[g_current_task_idx].state = SLEEPING;
     tcb_list[g_current_task_idx].sleep_remaining = timeInMs;
+    __asm volatile("CPSIE I"); // Re-enable interrupts
     __asm volatile("SVC #2"); // Trigger PendSV to switch context
 }
 
@@ -329,6 +339,7 @@ int osTaskExit(void) {
 
 void osTaskExitHandler(void) {
     // printf("Task %lu exited by returning.\r\n", g_current_task_idx);
+    __asm volatile("CPSID I");
     tcb_list[g_current_task_idx].state = DORMANT; // Mark task as dormant
     // Trigger PendSV to switch to another task
     // This is a critical part of a real scheduler
@@ -346,8 +357,10 @@ void osTaskExitHandler(void) {
     if (task_count == MAX_TASKS) {
 		// z222ye: but this case is not expected to happen, as we always have an idle task
         // printf("Final state of global LR entry point: %d \r\n", g_main_return_lr);
+        __asm volatile("CPSIE I");
         return;
     } else {
+        __asm volatile("CPSIE I");
         __asm volatile("SVC #2"); // SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
     }
     while(1); // Should not return from here after PendSV
