@@ -83,69 +83,75 @@
 #include "common.h"
 #include "k_task.h"
 #include "k_mem.h"
-#include <stdlib.h> //for testing
-#include "string.h" //for testing
+#include <stdint.h>
 
-int i_test = 0;
+#define ARM_CM_DEMCR      (*(volatile uint32_t *)0xE000EDFC)
+#define ARM_CM_DWT_CTRL   (*(volatile uint32_t *)0xE0001000)
+#define ARM_CM_DWT_CYCCNT (*(volatile uint32_t *)0xE0001004)
 
-int i_test2 = 0;
+// 系统时钟频率 (根据SystemClock_Config中的PLL配置计算得出)
+#define SYSTEM_CLOCK_HZ   84000000    // 84MHz = (16MHz / 16 * 336) / 4
 
+// 周期性任务
+void TaskA(void *p) {
+    volatile uint32_t last_tick = 0;
+    volatile uint32_t current_tick = 0;
+    volatile uint32_t delta_us = 0;
+    int resume_count = 0;
 
-void TaskA(void *) {
-   while(1){
-      printf("%d, %d\r\n", i_test, i_test2);
-      osPeriodYield();
-   }
-}
+    // 初始化DWT计数器
+    if (ARM_CM_DWT_CTRL != 0) {
+        printf("---- test5 ----\r\n");
+        printf("Using DWT for timing\r\n\r\n");
+        ARM_CM_DEMCR |= 1 << 24;  // 使能DWT
+        ARM_CM_DWT_CYCCNT = 0;    // 清零计数器
+        ARM_CM_DWT_CTRL |= 1 << 0; // 启动计数器
+    } else {
+        printf("DWT not available\r\n");
+        return;
+    }
 
-void TaskB(void *) {
-   while(1){
-      i_test = i_test + 1;
-      osPeriodYield();
-   }
-}
+    printf("A started \r\n");
+    last_tick = ARM_CM_DWT_CYCCNT;
 
-void TaskC(void *) {
-   while(1){
-      i_test2 = i_test2 + 1;
-      osPeriodYield();
-   }
+    while(1) {
+        osPeriodYield();  // 周期性yield
+        
+        if (resume_count < 10) {  // 只打印前10次resume
+            resume_count++;
+            current_tick = ARM_CM_DWT_CYCCNT;
+            // 转换为微秒
+            delta_us = ((current_tick - last_tick) * 1000000) / SYSTEM_CLOCK_HZ;
+            printf("Resume%d delta time =%lu us\r\n", resume_count, delta_us);
+            last_tick = current_tick;
+        } else {
+            osPeriodYield();
+        }
+    }
 }
 
 int main(void)
 {
+    /* MCU Configuration: Don't change this or the whole chip won't work!*/
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
+    MX_USART2_UART_Init();
 
-  /* MCU Configuration: Don't change this or the whole chip won't work!*/
+    osKernelInit();
+    k_mem_init();
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
-  /* Configure the system clock */
-  SystemClock_Config();
+    // 创建测试任务
+    TCB task;
+    task.stack_size = STACK_SIZE;
 
-  /* Initialize all configured peripherals */
-  MX_GPIO_Init();
-  MX_USART2_UART_Init();
-  /* MCU Configuration is now complete. Start writing your code below this line */
+    // 创建周期性任务A
+    task.ptask = &TaskA;
+    // 设置deadline为4ms (4000us)，这样应该能保证在3000-5000us范围内运行
+    osCreateDeadlineTask(4, &task);
 
-  osKernelInit();
-  k_mem_init();
+    osKernelStart();
 
-  //in main
-
-    TCB st_mytask;
-    st_mytask.stack_size = STACK_SIZE;
-    st_mytask.ptask = &TaskA;
-    osCreateDeadlineTask(4, &st_mytask);
-
-    st_mytask.ptask = &TaskB;
-    osCreateDeadlineTask(4, &st_mytask);
-
-    st_mytask.ptask = &TaskC;
-    osCreateDeadlineTask(12, &st_mytask);
-
-  osKernelStart();
-
-  printf("back to main\r\n");
-  while (1);
+    while (1);
  }
 
