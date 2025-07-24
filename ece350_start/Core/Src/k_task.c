@@ -243,6 +243,7 @@ int osKernelStart() {
     // to call launch_scheduler() when SVC number 16 is invoked.
     // printf("starting kernel 1 \r\n");
     os_running = 1; // Set the OS running flag
+    SysTick->VAL = 0;
     __asm volatile("SVC #1");
     // printf("\n YOUR PROGRAM IS DEAD \r\n");
     // Should not return from here if SVC is successful
