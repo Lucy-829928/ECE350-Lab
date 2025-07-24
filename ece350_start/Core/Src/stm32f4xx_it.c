@@ -347,7 +347,7 @@ void SysTick_Handler(void)
                 }
             }
             if (tcb_list[i].state == SLEEPING) {
-                tcb_list[i].deadline_remaining--;
+                //tcb_list[i].deadline_remaining--;
                 tcb_list[i].sleep_remaining--;
                 
                 // Only set need_context_switch if state changes
