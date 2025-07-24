@@ -337,22 +337,28 @@ void SysTick_Handler(void)
     if (os_running) {
         int need_context_switch = 0;  // Flag to track if we need to switch context
 
+
+        for(int i = 0; i < 2000; i++);
+
         for (int i = 1; i < MAX_TASKS; i++) {
             if (tcb_list[i].state == RUNNING || tcb_list[i].state == READY) {
                 tcb_list[i].deadline_remaining--;
 
                 if (tcb_list[i].deadline_remaining <= 0) {
                     need_context_switch = 1;
+
+                    //printf("R %d \r\n", i);
+
                     tcb_list[i].deadline_remaining = tcb_list[i].initial_deadline;
                 }
-            }
-            else if (tcb_list[i].state == SLEEPING) {
-                //tcb_list[i].deadline_remaining--;
+            } else if (tcb_list[i].state == SLEEPING) {
                 tcb_list[i].sleep_remaining--;
                 
                 // Only set need_context_switch if state changes
                 if (tcb_list[i].sleep_remaining <= 0) {
                     need_context_switch = 1;
+                    //printf("S %d \r\n", i);
+
                     tcb_list[i].state = READY;
                     tcb_list[i].sleep_remaining = 0;
                     tcb_list[i].deadline_remaining = tcb_list[i].initial_deadline;
