@@ -290,12 +290,12 @@ void osYield() {
 }
 
 void osPeriodYield() {
+    __asm volatile("CPSID I"); // Disable interrupts to prevent
+    tcb_list[g_current_task_idx].state = SLEEPING;
+    tcb_list[g_current_task_idx].sleep_remaining = tcb_list[g_current_task_idx].deadline_remaining;
+    __asm volatile("CPSIE I"); // Re-enable interrupts
+    __asm volatile("SVC #2"); // Trigger PendSV to switch context
 
-    // Get the time remaining in the current period. This is how long we need to sleep.
-    int time_to_sleep = tcb_list[g_current_task_idx].deadline_remaining;
-
-    // Now, go to sleep for the remainder of the *original* period.
-    osSleep(time_to_sleep);
 }
 
 void osSleep(int timeInMs) {
