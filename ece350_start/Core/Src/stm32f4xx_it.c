@@ -346,7 +346,7 @@ void SysTick_Handler(void)
                     tcb_list[i].deadline_remaining = tcb_list[i].initial_deadline;
                 }
             }
-            if (tcb_list[i].state == SLEEPING) {
+            else if (tcb_list[i].state == SLEEPING) {
                 //tcb_list[i].deadline_remaining--;
                 tcb_list[i].sleep_remaining--;
                 
